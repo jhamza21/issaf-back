@@ -33,6 +33,7 @@ class RegisterController extends Controller
      */
     protected $redirectTo = RouteServiceProvider::HOME;
 
+
     /**
      * Create a new controller instance.
      *
@@ -51,11 +52,18 @@ class RegisterController extends Controller
      */
     protected function validator(array $data)
     {
+        $roles=array("CLIENT","ADMIN_SERVICE","ADMIN_SAFF");
+        $sexes=array("HOMME","FEMME");
         return Validator::make($data, [
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'username' => ['required','string', 'max:255','min:6', 'unique:users'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-        ]);
+            'name' => ['required','string', 'max:255','min:6'],
+            'sexe' => 'required|in:' . implode(',', $sexes),
+            'role' => 'required|in:' . implode(',', $roles),
+            'email' => 'required|string|email',
+            'mobile' => 'required|string|min:15|max:19',
+
+            ]);
     }
 
     /**
@@ -67,9 +75,14 @@ class RegisterController extends Controller
     protected function create(array $data)
     {
         return User::create([
+            'username' => $data['username'],
+            'password' => Hash::make($data['password']),
+            'role' => $data['role'],
+            'sexe' => $data['sexe'],
             'name' => $data['name'],
             'email' => $data['email'],
-            'password' => Hash::make($data['password']),
+            'mobile' => $data['mobile'],
+
         ]);
     }
     protected function registered(Request $request, $user)

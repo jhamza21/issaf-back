@@ -2,7 +2,6 @@
 
 namespace App;
 
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
@@ -18,7 +17,7 @@ class User extends Authenticatable
      * @var array
      */
     protected $fillable = [
-        'name', 'email', 'password',
+        'email', 'password', 'username', 'mobile', 'name', 'role', 'sexe'
     ];
 
     /**
@@ -46,4 +45,7 @@ class User extends Authenticatable
 
         return $this->api_token;
     }
+    public function tickets(){
+        return $this->hasMany(Ticket::class);
+    } 
 }

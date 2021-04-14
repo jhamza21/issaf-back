@@ -3,10 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Provider;
+use App\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class ProviderController extends Controller
 {
+    public function getUserProvider()
+    {
+        $user = Auth::user();
+        $result = DB::table('providers')
+            ->where('user_id', $user->id)
+            ->first();
+        return response()->json($result, 200);
+    }
     public function index()
     {
         return Provider::all();
@@ -14,18 +27,70 @@ class ProviderController extends Controller
 
     public function show(Provider $provider)
     {
+        $provider["services"] = $provider->services;
         return $provider;
     }
 
     public function store(Request $request)
     {
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'title' => ['required', 'string', 'max:255', 'min:2'],
+                'description' => ['required', 'string', 'min:8', 'max:255'],
+                'address' => ['string', 'max:255', 'min:6'],
+                'mobile' => ['string', 'max:16', 'min:8'],
+                'email' => ['string', 'email'],
+                'url' => ['string'],
+                'img' => 'required|mimes:jpg,jpeg,png|max:2048',
+            ]
+        );
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()], 401);
+        }
+
+        $res = $request->file("img")->store("providersImg");
+        $request["image"] = substr($res, strpos($res, "/") + 1);
+        $user = Auth::user();
+        $request["user_id"] = $user->id;
         $provider = Provider::create($request->all());
+
 
         return response()->json($provider, 201);
     }
 
+    public function downloadImage(String $imgName)
+    {
+        return response()->download(storage_path() . "/" . "app/providersImg/" . $imgName);
+    }
+
+
+
     public function update(Request $request, Provider $provider)
     {
+        $user = User::find(Auth::user()->id);
+        //CHECK PASSWORD MATCH 
+        $hashedPassword = $user->password;
+        if (!$request['oldPassword'] || !Hash::check($request['oldPassword'], $hashedPassword)) {
+            return response()->json("INVALID_CREDENTIALS", 401);
+        }
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'title' => ['string', 'max:255', 'min:2'],
+                'description' => ['string', 'min:8', 'max:255'],
+                'address' => ['string', 'max:255', 'min:6'],
+                'mobile' => ['string', 'max:16', 'min:8'],
+                'email' => ['string', 'email'],
+                'url' => ['string'],
+                'img' => 'mimes:jpg,jpeg,png|max:2048',
+            ]
+        );
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()], 400);
+        }
         $provider->update($request->all());
 
         return response()->json($provider, 200);
@@ -34,7 +99,6 @@ class ProviderController extends Controller
     public function delete(Provider $provider)
     {
         $provider->delete();
-
         return response()->json(null, 204);
     }
 }
