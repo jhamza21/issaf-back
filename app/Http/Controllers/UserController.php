@@ -11,7 +11,13 @@ use Illuminate\Support\Facades\Hash;
 class UserController extends Controller
 {
 
+    public function getUserByUsername(String $username){
+        $user = User::where('username',$username) -> first();
+        if($user)
+        return response()->json($user, 200);
+        return response()->json("RESSOURCE_NOT_FOUND", 404);
 
+    }
     public function update(Request $request)
     {
         $user = User::find(Auth::user()->id);

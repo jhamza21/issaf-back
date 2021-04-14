@@ -14,7 +14,9 @@ Route::get('serviceImg/{imgName}', 'ServiceController@downloadImage');
 
 //USER AUTHENTIFICATED
 Route::group(['middleware' => 'auth:api'], function() {
-    Route::put('updateAccount', 'UserController@update');
+    //users
+    Route::put('updateAccount', 'UserController@update');    
+    Route::get('getUser/{username}', 'UserController@getUserByUsername');
     //providers
     Route::get('getUserProvider', 'ProviderController@getUserProvider');
     Route::get('providers', 'ProviderController@index');
