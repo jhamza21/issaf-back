@@ -20,7 +20,7 @@ class ServiceController extends Controller
 
     public function store(Request $request)
     {               
-        $days=array("MON","TUE","WED","THU","FRI","SAT","SUN");
+        $days=array("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" );
         $status=array("OPENED","CLOSED");
 
         $validator = Validator::make($request->all(), 
