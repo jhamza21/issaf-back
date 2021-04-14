@@ -69,12 +69,6 @@ class ProviderController extends Controller
 
     public function update(Request $request, Provider $provider)
     {
-        $user = User::find(Auth::user()->id);
-        //CHECK PASSWORD MATCH 
-        $hashedPassword = $user->password;
-        if (!$request['oldPassword'] || !Hash::check($request['oldPassword'], $hashedPassword)) {
-            return response()->json("INVALID_CREDENTIALS", 401);
-        }
         $validator = Validator::make(
             $request->all(),
             [

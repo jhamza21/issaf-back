@@ -35,6 +35,7 @@ class ServiceController extends Controller
             'open_days.*' => 'required|string|distinct|in:' . implode(',', $days),
             'status' => 'required|in:' . implode(',', $status),
             'provider_id' =>'required|numeric|min:0',
+            'img' => 'mimes:jpg,jpeg,png|max:2048',
        ]);   
 
         if ($validator->fails()) {          
@@ -74,7 +75,7 @@ class ServiceController extends Controller
             'open_days.*' => 'string|distinct|in:' . implode(',', $days),
             'status' => 'in:' . implode(',', $status),
             'id_provider' =>'numeric|min:0',
-
+            'img' => 'mimes:jpg,jpeg,png|max:2048',
        ]);   
 
         if ($validator->fails()) {          

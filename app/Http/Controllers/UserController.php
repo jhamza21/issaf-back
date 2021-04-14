@@ -17,11 +17,6 @@ class UserController extends Controller
         $user = User::find(Auth::user()->id);
 
         if ($user) {
-            //CHECK PASSWORD MATCH 
-            $hashedPassword = $user->password;
-            if (!$request['oldPassword'] || !Hash::check($request['oldPassword'], $hashedPassword)) {
-                return response()->json("INVALID_CREDENTIALS", 401);
-            }
             $validate = Validator::make($request->all(), [
                 'username' => 'string|min:6|max:255|unique:users',
                 'email' => 'string|email|unique:users',
