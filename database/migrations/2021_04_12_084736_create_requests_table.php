@@ -16,7 +16,7 @@ class CreateRequestsTable extends Migration
         Schema::create('requests', function (Blueprint $table) {
             $table->id();
             $table->dateTime('date_time');
-            $table->enum('status', ["ACCEPTED","REFUSED"]);
+            $table->enum('status', ["ACCEPTED","REFUSED"])->nullable();
             $table->unsignedBigInteger('sender_id');
             $table->foreign('sender_id')->references('id')->on('users')->onDelete('cascade');
             $table->unsignedBigInteger('receiver_id');

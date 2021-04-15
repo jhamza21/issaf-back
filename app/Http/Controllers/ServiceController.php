@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Service;
+use App\Request as Req;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
 class ServiceController extends Controller
@@ -35,6 +38,7 @@ class ServiceController extends Controller
             'open_days.*' => 'required|string|distinct|in:' . implode(',', $days),
             'status' => 'required|in:' . implode(',', $status),
             'provider_id' =>'required|numeric|min:0',
+            'admin_id' =>'required|numeric|min:0',
             'img' => 'mimes:jpg,jpeg,png|max:2048',
        ]);   
 
@@ -45,7 +49,20 @@ class ServiceController extends Controller
         $res=$request->file("img")->store("servicesImg");
         $request["image"]=substr($res, strpos($res, "/")+1 );
         }
+       
         $service = Service::create($request->all());
+        //SEND REQUEST TO USER
+        $dateTime = Carbon::now();
+        $user = Auth::user();
+        $request["status"]=null;
+        $request["date_time"]=$dateTime->toDateTimeString();
+        $request["sender_id"]=$user->id;
+        $request["receiver_id"]=$request["admin_id"];
+        $request["service_id"]=$service->id;
+
+        Req::create(
+            $request->all()
+        );
       
 
         return response()->json($service, 201);

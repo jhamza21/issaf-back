@@ -11,6 +11,10 @@ use Illuminate\Support\Facades\Hash;
 class UserController extends Controller
 {
 
+    public function index()
+    {
+        return User::all();
+    }
     public function getUserByUsername(String $username){
         $user = User::where('username',$username) -> first();
         if($user)

@@ -24,6 +24,7 @@ class CreateServicesTable extends Migration
             $table->time('work_end_time');
             $table->json('open_days');
             $table->enum('status', ["OPENED","CLOSED"]);
+            $table->enum('request_status', ["ACCEPTED","REFUSED"])->nullable();
             $table->unsignedBigInteger('provider_id');
             $table->foreign('provider_id')->references('id')->on('providers')->onDelete('cascade');
             $table->unsignedBigInteger('admin_id');
