@@ -22,7 +22,7 @@ class CreateRequestsTable extends Migration
             $table->unsignedBigInteger('receiver_id');
             $table->foreign('receiver_id')->references('id')->on('users')->onDelete('cascade');
             $table->unsignedBigInteger('service_id');
-            $table->foreign('service_id')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('service_id')->references('id')->on('services')->onDelete('cascade');
             $table->timestamps();
         });
     }

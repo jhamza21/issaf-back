@@ -15,12 +15,19 @@ class UserController extends Controller
     {
         return User::all();
     }
-    public function getUserByUsername(String $username){
-        $user = User::where('username',$username) -> first();
-        if($user)
-        return response()->json($user, 200);
+    public function getUserByUsername(String $username)
+    {
+        $user = User::where('username', $username)->first();
+        if ($user)
+            return response()->json($user, 200);
         return response()->json("RESSOURCE_NOT_FOUND", 404);
-
+    }
+    public function getUserById(String $id)
+    {
+        $user = User::where('id', $id)->first();
+        if ($user)
+            return response()->json($user, 200);
+        return response()->json("RESSOURCE_NOT_FOUND", 404);
     }
     public function update(Request $request)
     {
@@ -38,7 +45,7 @@ class UserController extends Controller
             ]);
 
             if ($validate->fails())
-                return response()->json($validate->messages(), 400);
+                return response()->json(['error' => $validate->errors()->first()], 401);
             else {
                 if ($request['username']) $user->username = $request['username'];
                 if ($request['email']) $user->email = $request['email'];
@@ -51,7 +58,7 @@ class UserController extends Controller
                 return response()->json($user, 200);
             }
         } else {
-            return response()->json("USER_NOT_FOUND", 404);
+            return response()->json(["error" => "USER_NOT_FOUND"], 401);
         }
     }
 }

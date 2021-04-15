@@ -17,7 +17,9 @@ Route::group(['middleware' => 'auth:api'], function() {
     //users
     Route::get('users', 'UserController@index');    
     Route::put('updateAccount', 'UserController@update');    
-    Route::get('getUser/{username}', 'UserController@getUserByUsername');
+    Route::get('getUserByUsername/{username}', 'UserController@getUserByUsername');
+    Route::get('getUserById/{id}', 'UserController@getUserById');
+
     //providers
     Route::get('getUserProvider', 'ProviderController@getUserProvider');
     Route::get('providers', 'ProviderController@index');
@@ -26,6 +28,7 @@ Route::group(['middleware' => 'auth:api'], function() {
     Route::post('providers/{provider}', 'ProviderController@update');
     Route::delete('providers/{provider}', 'ProviderController@delete');
     //services
+    Route::get('getServiceById/{id}', 'ServiceController@getServiceById');
     Route::get('services', 'ServiceController@index');
     Route::get('services/{service}', 'ServiceController@show');
     Route::post('services', 'ServiceController@store');
@@ -38,6 +41,7 @@ Route::group(['middleware' => 'auth:api'], function() {
     Route::put('tikcets/{tikcet}', 'TicketController@update');
     Route::delete('tikcets/{tikcet}', 'TicketController@delete');
     //requests
+    Route::get('requests', 'RequestController@index');
     Route::get('requests/{date}/{service_id}', 'RequestController@getTicketsByDate');
     Route::get('requests/sended', 'RequestController@getSendedRequests');
     Route::get('requests/received', 'RequestController@getReceivedRequests');

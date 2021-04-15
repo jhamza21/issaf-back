@@ -47,7 +47,7 @@ class ProviderController extends Controller
         );
 
         if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()], 401);
+            return response()->json(['error' => $validator->errors()->first()], 401);
         }
 
         $res = $request->file("img")->store("providersImg");
@@ -83,7 +83,7 @@ class ProviderController extends Controller
         );
 
         if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()], 400);
+            return response()->json(['error' => $validator->errors()->first()], 400);
         }
         $provider->update($request->all());
 
