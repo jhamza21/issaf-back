@@ -19,6 +19,13 @@ class ServiceController extends Controller
         return response()->json($service, 200);
         return response()->json("RESSOURCE_NOT_FOUND", 404);
     }
+    public function getServiceByAdmin(){
+        $user = Auth::user();
+        $service = Service::where('admin_id',$user->id) -> first();
+        if($service)
+        return response()->json($service, 200);
+        return response()->json("RESSOURCE_NOT_FOUND", 404);
+    }
     public function index()
     {
         return Service::all();
