@@ -37,7 +37,7 @@ class UserController extends Controller
             $validate = Validator::make($request->all(), [
                 'username' => 'string|min:6|max:255|unique:users',
                 'email' => 'string|email|unique:users',
-                'mobile' => 'min:8|max:14|string',
+                'mobile' => 'min:16|max:20|string',
                 'country' => 'string|min:2|max:2',
                 'name' => 'min:4|max:80|string',
                 'sexe' => 'min:4|max:80|string',

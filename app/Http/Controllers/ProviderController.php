@@ -8,7 +8,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
 class ProviderController extends Controller
 {
@@ -39,7 +38,7 @@ class ProviderController extends Controller
                 'title' => ['required', 'string', 'max:255', 'min:2'],
                 'description' => ['required', 'string', 'min:8', 'max:255'],
                 'address' => ['string', 'max:255', 'min:6'],
-                'mobile' => ['string', 'max:16', 'min:8'],
+                'mobile' => ['string', 'max:20', 'min:16'],
                 'email' => ['string', 'email'],
                 'url' => ['string'],
                 'img' => 'required|mimes:jpg,jpeg,png|max:2048',
@@ -75,7 +74,7 @@ class ProviderController extends Controller
                 'title' => ['string', 'max:255', 'min:2'],
                 'description' => ['string', 'min:8', 'max:255'],
                 'address' => ['string', 'max:255', 'min:6'],
-                'mobile' => ['string', 'max:16', 'min:8'],
+                'mobile' => ['string', 'max:20', 'min:16'],
                 'email' => ['string', 'email'],
                 'url' => ['string'],
                 'img' => 'mimes:jpg,jpeg,png|max:2048',
