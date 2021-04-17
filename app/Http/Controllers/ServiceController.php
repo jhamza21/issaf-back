@@ -13,17 +13,19 @@ use Illuminate\Support\Facades\Validator;
 class ServiceController extends Controller
 {
 
-    public function getServiceById(String $id){
-        $service = Service::where('id',$id) -> first();
-        if($service)
-        return response()->json($service, 200);
+    public function getServiceById(String $id)
+    {
+        $service = Service::where('id', $id)->first();
+        if ($service)
+            return response()->json($service, 200);
         return response()->json("RESSOURCE_NOT_FOUND", 404);
     }
-    public function getServiceByAdmin(){
+    public function getServiceByAdmin()
+    {
         $user = Auth::user();
-        $service = Service::where('admin_id',$user->id) -> first();
-        if($service)
-        return response()->json($service, 200);
+        $service = Service::where('admin_id', $user->id)->first();
+        if ($service)
+            return response()->json($service, 200);
         return response()->json("RESSOURCE_NOT_FOUND", 404);
     }
     public function index()
@@ -78,16 +80,16 @@ class ServiceController extends Controller
         //SEND REQUEST TO USER
         $dateTime = Carbon::now();
         $user = Auth::user();
-        $request["status"] = null;
-        $request["date_time"] = $dateTime->toDateTimeString();
-        $request["sender_id"] = $user->id;
-        $request["receiver_id"] = $userAdmin->id;
-        $request["service_id"] = $service->id;
-
         Req::create(
-            $request->all()
-        );
+            [
+                'status' => null,
+                'date_time' => $dateTime->toDateTimeString(),
+                'sender_id' => $user->id,
+                'receiver_id' =>  $userAdmin->id,
+                'service_id' => $service->id,
 
+            ]
+        );
 
         return response()->json($service, 201);
     }
@@ -124,6 +126,34 @@ class ServiceController extends Controller
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()->first()], 401);
         }
+        //update username
+        if ($request["username_admin"] != null) {
+            $userAdmin = User::where('username', $request["username_admin"])->first();
+            if (!$userAdmin) return response()->json(['error' => "USER_NOT_FOUND"], 401);
+            if ($userAdmin && $userAdmin->role != "ADMIN_SAFF") return response()->json(['error' => "USER_INVALID_ROLE"], 401);
+            $serv = Service::where('admin_id', $userAdmin->id)->first();
+            if ($serv) return response()->json(['error' => "USER_ALREADY_AFFECTED_TO_SERVICE"], 401);
+            $request["admin_id"] = $userAdmin->id;
+            //SEND REQUEST TO USER
+            $dateTime = Carbon::now();
+            $user = Auth::user();
+            Req::create(
+                [
+                    'status' => null,
+                    'date_time' => $dateTime->toDateTimeString(),
+                    'sender_id' => $user->id,
+                    'receiver_id' =>  $userAdmin->id,
+                    'service_id' => $service->id,
+
+                ]
+            );
+        }
+        //update image
+        if ($request["img"] != null) {
+            $res = $request->file("img")->store("servicesImg");
+            $request["image"] = substr($res, strpos($res, "/") + 1);
+        }
+
         $service->update($request->all());
 
         return response()->json($service, 200);

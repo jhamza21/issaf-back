@@ -84,6 +84,10 @@ class ProviderController extends Controller
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()->first()], 400);
         }
+        if ($request["img"] != null) {
+        $res = $request->file("img")->store("providersImg");
+        $request["image"] = substr($res, strpos($res, "/") + 1);
+        }
         $provider->update($request->all());
 
         return response()->json($provider, 200);
