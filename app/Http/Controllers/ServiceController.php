@@ -20,6 +20,7 @@ class ServiceController extends Controller
             return response()->json($service, 200);
         return response()->json("RESSOURCE_NOT_FOUND", 404);
     }
+
     public function getServiceByAdmin()
     {
         $user = Auth::user();
@@ -27,15 +28,6 @@ class ServiceController extends Controller
         if ($service)
             return response()->json($service, 200);
         return response()->json("RESSOURCE_NOT_FOUND", 404);
-    }
-    public function index()
-    {
-        return Service::all();
-    }
-
-    public function show(Service $service)
-    {
-        return $service;
     }
 
     public function store(Request $request)
@@ -75,7 +67,7 @@ class ServiceController extends Controller
             $res = $request->file("img")->store("servicesImg");
             $request["image"] = substr($res, strpos($res, "/") + 1);
         }
-        $request["admin_id"] = $userAdmin->id;
+       // $request["admin_id"] = $userAdmin->id;
         $service = Service::create($request->all());
         //SEND REQUEST TO USER
         $dateTime = Carbon::now();
@@ -98,8 +90,6 @@ class ServiceController extends Controller
     {
         return response()->download(storage_path() . "/" . "app/servicesImg/" . $imgName);
     }
-
-
 
     public function update(Request $request, Service $service)
     {
