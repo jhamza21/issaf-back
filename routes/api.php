@@ -28,6 +28,7 @@ Route::group(['middleware' => 'auth:api'], function() {
     Route::post('providers/{provider}', 'ProviderController@update');
     Route::delete('providers/{provider}', 'ProviderController@delete');
     //services
+    Route::get('services', 'ServiceController@index');
     Route::get('getServiceByAdmin', 'ServiceController@getServiceByAdmin');
     Route::get('getServiceById/{id}', 'ServiceController@getServiceById');
     Route::post('services', 'ServiceController@store');
@@ -42,8 +43,10 @@ Route::group(['middleware' => 'auth:api'], function() {
     Route::get('requests/{date}/{service_id}', 'RequestController@getTicketsByDate');
 
     //requests
+    Route::get('requests', 'RequestController@index');
     Route::get('requests/sended', 'RequestController@getSendedRequests');
     Route::get('requests/received', 'RequestController@getReceivedRequests');
+    Route::get('requests/{service}', 'RequestController@getRequestByService');
     Route::put('requests/refuse/{request}', 'RequestController@refuseRequest');
     Route::put('requests/accept/{request}', 'RequestController@acceptRequest');
     Route::delete('requests/{request}', 'RequestController@delete');

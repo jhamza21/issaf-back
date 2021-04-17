@@ -13,12 +13,18 @@ use Illuminate\Support\Facades\Validator;
 class ServiceController extends Controller
 {
 
+    public function index()
+    {
+        return Service::all();
+    }
+
     public function getServiceById(String $id)
     {
         $service = Service::where('id', $id)->first();
         if ($service)
             return response()->json($service, 200);
-        return response()->json("RESSOURCE_NOT_FOUND", 404);
+        else
+            return response()->json("RESSOURCE_NOT_FOUND", 404);
     }
 
     public function getServiceByAdmin()
@@ -27,7 +33,8 @@ class ServiceController extends Controller
         $service = Service::where('admin_id', $user->id)->first();
         if ($service)
             return response()->json($service, 200);
-        return response()->json("RESSOURCE_NOT_FOUND", 404);
+        else
+            return response()->json("RESSOURCE_NOT_FOUND", 404);
     }
 
     public function store(Request $request)
@@ -67,7 +74,6 @@ class ServiceController extends Controller
             $res = $request->file("img")->store("servicesImg");
             $request["image"] = substr($res, strpos($res, "/") + 1);
         }
-        // $request["admin_id"] = $userAdmin->id;
         $service = Service::create($request->all());
         //SEND REQUEST TO USER
         $dateTime = Carbon::now();
@@ -93,7 +99,7 @@ class ServiceController extends Controller
 
     public function update(Request $request, Service $service)
     {
-        $days = array("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN");
+        $days = array("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday");
         $status = array("OPENED", "CLOSED");
 
         $validator = Validator::make(
@@ -108,7 +114,6 @@ class ServiceController extends Controller
                 'open_days' => "array|min:1",
                 'open_days.*' => 'string|distinct|in:' . implode(',', $days),
                 'status' => 'in:' . implode(',', $status),
-                'id_provider' => 'numeric|min:0',
                 'img' => 'mimes:jpg,jpeg,png|max:2048',
             ]
         );
@@ -123,20 +128,34 @@ class ServiceController extends Controller
             if ($userAdmin && $userAdmin->role != "ADMIN_SAFF") return response()->json(['error' => "USER_INVALID_ROLE"], 401);
             $serv = Service::where('admin_id', $userAdmin->id)->first();
             if ($serv) return response()->json(['error' => "USER_ALREADY_AFFECTED_TO_SERVICE"], 401);
-            $request["admin_id"] = $userAdmin->id;
+
             //SEND REQUEST TO USER
             $dateTime = Carbon::now();
             $user = Auth::user();
-            Req::create(
-                [
-                    'status' => null,
-                    'date_time' => $dateTime->toDateTimeString(),
-                    'sender_id' => $user->id,
-                    'receiver_id' =>  $userAdmin->id,
-                    'service_id' => $service->id,
+            $req = Req::where('service_id', $request->id)->first();
+            if ($req) {
+                $req->update([
+                    [
+                        'status' => null,
+                        'date_time' => $dateTime->toDateTimeString(),
+                        'sender_id' => $user->id,
+                        'receiver_id' =>  $userAdmin->id,
+                        'service_id' => $service->id,
 
-                ]
-            );
+                    ]
+                ]);
+            } else {
+                Req::create(
+                    [
+                        'status' => null,
+                        'date_time' => $dateTime->toDateTimeString(),
+                        'sender_id' => $user->id,
+                        'receiver_id' =>  $userAdmin->id,
+                        'service_id' => $service->id,
+
+                    ]
+                );
+            }
         }
         //update image
         if ($request["img"] != null) {
@@ -152,7 +171,8 @@ class ServiceController extends Controller
     public function delete(Service $service)
     {
         $req = Req::where("service_id", $service->id)->first();
-        $req->delete();
+        if ($req)
+            $req->delete();
         $service->delete();
         return response()->json(null, 204);
     }

@@ -9,6 +9,21 @@ use Illuminate\Support\Facades\Auth;
 class RequestController extends Controller
 {
 
+    public function index()
+    {
+        return UserRequest::all();
+    }
+
+    public function getRequestByService($service)
+    {
+        $result = UserRequest::where('service_id', $service)->first();
+        if($result)
+        return response()->json($result, 200);
+        else
+        return response()->json("RESSOURCE_NOT_FOUND", 404);
+
+    }
+
     public function getSendedRequests()
     {
         $user = Auth::user();
@@ -26,7 +41,9 @@ class RequestController extends Controller
     public function refuseRequest(UserRequest $request)
     {
         $request->update([
-            "status" => "REFUSED"
+            "status" => "REFUSED",
+            "receiver_id" => $request->sender_id,
+            "sender_id" => $request->receiver_id
         ]);
         return response()->json(null, 200);
     }
@@ -43,7 +60,9 @@ class RequestController extends Controller
             ]);
         }
         $request->update([
-            "status" => "ACCEPTED"
+            "status" => "ACCEPTED",
+            "receiver_id" => $request->sender_id,
+            "sender_id" => $request->receiver_id
         ]);
         return response()->json(null, 200);
     }
