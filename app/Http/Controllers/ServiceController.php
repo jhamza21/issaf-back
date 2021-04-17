@@ -67,7 +67,7 @@ class ServiceController extends Controller
             $res = $request->file("img")->store("servicesImg");
             $request["image"] = substr($res, strpos($res, "/") + 1);
         }
-       // $request["admin_id"] = $userAdmin->id;
+        // $request["admin_id"] = $userAdmin->id;
         $service = Service::create($request->all());
         //SEND REQUEST TO USER
         $dateTime = Carbon::now();
