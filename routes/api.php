@@ -11,6 +11,10 @@ Route::post('tokenIsValid', function(){
 Route::post('logout', 'Auth\LoginController@logout');
 Route::get('providerImg/{imgName}', 'ProviderController@downloadImage');
 Route::get('serviceImg/{imgName}', 'ServiceController@downloadImage');
+Route::get('hamza', function(){
+    return response()->json("hamza hi");
+});
+
 
 //USER AUTHENTIFICATED
 Route::group(['middleware' => 'auth:api'], function() {
