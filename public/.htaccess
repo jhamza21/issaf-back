@@ -4,8 +4,8 @@
     </IfModule>
 
     RewriteEngine On
-    RewriteBase /laravel51/public/
-   # change above to your site i.e.,  RewriteBase /whatever/public/
+    RewriteBase /backend/public/
+   # change above to your site i.e.,  RewriteBase /backend/public/
 
     # Redirect Trailing Slashes...
     RewriteRule ^(.*)/$ /$1 [L,R=301]
