@@ -35,13 +35,13 @@ Route::group(['middleware' => 'auth:api'], function() {
     Route::post('services/{service}', 'ServiceController@update');
     Route::delete('services/{service}', 'ServiceController@delete');
     //tickets
-    Route::get('tikcets', 'TicketController@index');
-    Route::get('tikcets/{tikcet}', 'TicketController@show');
-    Route::post('tikcets', 'TicketController@store');
-    Route::put('tikcets/{tikcet}', 'TicketController@update');
-    Route::delete('tikcets/{tikcet}', 'TicketController@delete');
-    Route::get('requests/{date}/{service_id}', 'RequestController@getTicketsByDate');
-
+    Route::get('requests/{date}/{service_id}', 'TicketController@getAvailableTicketsByDate');
+    Route::get('requests', 'TicketController@index');
+    Route::get('requests/{tikcet}', 'TicketController@show');
+    Route::post('requests', 'TicketController@store');
+    Route::put('requests/{tikcet}', 'TicketController@update');
+    Route::delete('requests/{tikcet}', 'TicketController@delete');
+   // Route::get('requests/{date}/{service_id}', 'RequestController@getTicketsByDate');
     //requests
     Route::get('requests', 'RequestController@index');
     Route::get('requests/sended', 'RequestController@getSendedRequests');

@@ -16,7 +16,8 @@ class CreateTicketsTable extends Migration
         Schema::create('tickets', function (Blueprint $table) {
             $table->id();
             $table->unsignedInteger('number');
-            $table->dateTime('date_time');
+            $table->date('date');
+            $table->time('time');
             $table->enum('status', ["IN_PROGRESS","DONE","DELAYED","CANCELED"]);
             $table->unsignedBigInteger('user_id');
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');

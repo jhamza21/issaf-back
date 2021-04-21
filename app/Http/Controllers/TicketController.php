@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Service;
 use App\Ticket;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Auth;
+use DateInterval;
+use DatePeriod;
+use DateTime;
 use Illuminate\Support\Facades\DB;
 
 class TicketController extends Controller
@@ -16,6 +20,24 @@ class TicketController extends Controller
         return $user->tickets;
     }
 
+    public function getAvailableTicketsByDate(string $date, string $service_id)
+    {
+
+        $service = Service::where('id', $service_id)->first();
+        $availableTickets = array();
+        $begin = new DateTime($service->work_start_time);
+        $end   = new DateTime($service->work_end_time);
+        $interval = DateInterval::createFromDateString($service->avg_time_per_client . ' min');
+        $times    = new DatePeriod($begin, $interval, $end);
+
+        foreach ($times as $time) {
+            $exist = DB::table('requests')->where('service_id', $service_id)
+                ->whereDate('date_time', $date)->first();
+            if (!$exist) $availableTickets[] = date_format($time,'H:i');
+        }
+
+        return response()->json($availableTickets, 200);
+    }
 
     public function getTicketsByDate(string $date, string $service_id)
     {

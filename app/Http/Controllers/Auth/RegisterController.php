@@ -60,7 +60,7 @@ class RegisterController extends Controller
             'name' => ['required','string', 'max:255','min:6'],
             'sexe' => 'required|in:' . implode(',', $sexes),
             'role' => 'required|in:' . implode(',', $roles),
-            'email' => 'required|string|email',
+            'email' => 'required|string|email|unique:users',
             'mobile' => 'required|string|min:16|max:20',
 
             ]);
