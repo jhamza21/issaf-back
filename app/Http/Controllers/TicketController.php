@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Service;
 use App\Ticket;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Auth;
@@ -16,8 +17,12 @@ class TicketController extends Controller
 {
     public function index()
     {
+
         $user = Auth::user();
-        return $user->tickets;
+        $data = Ticket::select('tickets.id','tickets.number', 'tickets.date', 'tickets.time', 'tickets.status', 'services.title', 'services.description')->where('user_id', $user->id)
+            ->join('services', 'tickets.service_id', '=', 'services.id')
+            ->get();
+        return $data;
     }
 
     public function getAvailableTicketsByDate(string $date, string $service_id)
@@ -33,17 +38,10 @@ class TicketController extends Controller
         foreach ($times as $time) {
             $exist = DB::table('requests')->where('service_id', $service_id)
                 ->whereDate('date_time', $date)->first();
-            if (!$exist) $availableTickets[] = date_format($time,'H:i');
+            if (!$exist) $availableTickets[] = date_format($time, 'H:i');
         }
 
         return response()->json($availableTickets, 200);
-    }
-
-    public function getTicketsByDate(string $date, string $service_id)
-    {
-        $result = DB::table('requests')->where('serivce_id', $service_id)
-            ->whereDate('date_time', $date);
-        return response()->json($result, 200);
     }
 
     public function show(Ticket $ticket)
@@ -54,21 +52,26 @@ class TicketController extends Controller
 
     public function store(Request $request)
     {
-        $status = array("IN_PROGRESS", "DONE", "DELAYED", "CANCELED");
 
         $validator = Validator::make(
             $request->all(),
             [
-                'number' => ['required', 'numeric', 'max:10000', 'min:0'],
-                'status' => 'required|in:' . implode(',', $status),
-                'date_time' => 'required|date_format:Y-m-d H:i:s|after:yesterday'
+                'date' => 'required|date_format:Y-m-d',
+                'time' => 'required|date_format:H:i',
+                'service_id' => 'required|numeric|min:0',
             ]
         );
 
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()->first()], 401);
         }
-
+        $lastTicket = Ticket::where('service_id',$request['service_id'])->orderBy('created_at','desc')->first();
+        if ($lastTicket) {
+            $request['number'] = $lastTicket->number + 1;
+        } else {
+            $request['number'] = 1;
+        }
+        $request['status'] = 'IN_PROGRESS';
         $user = Auth::user();
         $request["user_id"] = $user->id;
         $ticket = Ticket::create($request->all());
