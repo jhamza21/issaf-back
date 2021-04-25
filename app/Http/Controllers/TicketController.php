@@ -12,6 +12,8 @@ use DateInterval;
 use DatePeriod;
 use DateTime;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+
 
 class TicketController extends Controller
 {
@@ -19,7 +21,7 @@ class TicketController extends Controller
     {
 
         $user = Auth::user();
-        $data = Ticket::select('tickets.id','tickets.number', 'tickets.date', 'tickets.time', 'tickets.status', 'services.title', 'services.description')->where('user_id', $user->id)
+        $data = Ticket::select('tickets.id', 'tickets.number', 'tickets.date', 'tickets.time', 'tickets.status', 'services.title', 'services.description')->where('user_id', $user->id)
             ->join('services', 'tickets.service_id', '=', 'services.id')
             ->get();
         return $data;
@@ -30,18 +32,41 @@ class TicketController extends Controller
 
         $service = Service::where('id', $service_id)->first();
         $availableTickets = array();
+        //check day
+        $day = Carbon::createFromFormat('Y-m-d', $date)->format('l');
+        if (!in_array($day, $service->open_days)) return response()->json($availableTickets, 200);
+        //check hoolidays
+        if ($service->hoolidays && in_array($date, $service->hoolidays)) return response()->json($availableTickets, 200);
         $begin = new DateTime($service->work_start_time);
         $end   = new DateTime($service->work_end_time);
         $interval = DateInterval::createFromDateString($service->avg_time_per_client . ' min');
         $times    = new DatePeriod($begin, $interval, $end);
-
         foreach ($times as $time) {
-            $exist = DB::table('requests')->where('service_id', $service_id)
-                ->whereDate('date_time', $date)->first();
-            if (!$exist) $availableTickets[] = date_format($time, 'H:i');
+            //check break times
+            if (!$this->timeInBreak(date_format($time, 'H:i'), $service->break_times)) {
+                $exist = DB::table('tickets')->where('service_id', $service_id)
+                    ->whereDate('date', $date)->whereTime('time', $time)->first();
+                if (!$exist) $availableTickets[] = date_format($time, 'H:i');
+            }
         }
 
         return response()->json($availableTickets, 200);
+    }
+
+    private function timeInBreak($time, $breaks)
+    {
+        if (!$breaks) return false;
+        foreach ($breaks as $break) {
+            $startTime = Carbon::createFromFormat('H:i', substr($break, 0, 5));
+            $endTime = Carbon::createFromFormat('H:i', substr($break, 10, 5));
+            $currentTime = Carbon::createFromFormat('H:i', $time);
+
+            if ($currentTime->between($startTime, $endTime, true)) {
+                return true;
+            } else {
+                return false;
+            }
+        }
     }
 
     public function show(Ticket $ticket)
@@ -65,14 +90,22 @@ class TicketController extends Controller
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()->first()], 401);
         }
-        $lastTicket = Ticket::where('service_id',$request['service_id'])->orderBy('created_at','desc')->first();
+        $user = Auth::user();
+        //check duplicate ticket
+        $exist = DB::table('tickets')->where('user_id', $user->id)->where('service_id', $request["service_id"])->where('status', 'IN_PROGRESS')->first();
+        if ($exist) return response()->json(['error' => "ERROR_DUPLICATED_TICKET"], 401);
+        //check if ticket already taked
+        $taked = DB::table('tickets')->where('service_id', $request["service_id"])
+            ->whereDate('date', $request["date"])->whereTime('time', $request["time"])->first();
+        if ($taked) return response()->json(['error' => "TICKET_ALREADY_TAKED"], 401);
+
+        $lastTicket = Ticket::where('service_id', $request['service_id'])->orderBy('created_at', 'desc')->first();
         if ($lastTicket) {
             $request['number'] = $lastTicket->number + 1;
         } else {
             $request['number'] = 1;
         }
         $request['status'] = 'IN_PROGRESS';
-        $user = Auth::user();
         $request["user_id"] = $user->id;
         $ticket = Ticket::create($request->all());
 

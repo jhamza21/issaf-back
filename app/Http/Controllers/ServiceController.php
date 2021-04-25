@@ -53,6 +53,8 @@ class ServiceController extends Controller
                 'work_end_time' => ['required', 'date_format:H:i', 'after:work_start_time'],
                 'open_days' => "required|array|min:1",
                 'open_days.*' => 'required|string|distinct|in:' . implode(',', $days),
+                'hoolidays' => "array",
+                'break_times' => "array",
                 'status' => 'required|in:' . implode(',', $status),
                 'provider_id' => 'required|numeric|min:0',
                 'username_admin' => ['required', 'string', 'max:255', 'min:6'],
@@ -113,6 +115,8 @@ class ServiceController extends Controller
                 'work_end_time' => ['date_format:H:i', 'after:work_start_time'],
                 'open_days' => "array|min:1",
                 'open_days.*' => 'string|distinct|in:' . implode(',', $days),
+                'hoolidays' => "array",
+                'break_times' => "array",
                 'status' => 'in:' . implode(',', $status),
                 'img' => 'mimes:jpg,jpeg,png|max:2048',
             ]
@@ -162,6 +166,8 @@ class ServiceController extends Controller
             $res = $request->file("img")->store("servicesImg");
             $request["image"] = substr($res, strpos($res, "/") + 1);
         }
+        if(!$request["hoolidays"])$request["hoolidays"]=null;
+        if(!$request["break_times"])$request["break_times"]=null;
 
         $service->update($request->all());
 
