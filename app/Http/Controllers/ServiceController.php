@@ -21,16 +21,17 @@ class ServiceController extends Controller
     public function getServiceById(String $id)
     {
         $service = Service::where('id', $id)->first();
-        if ($service)
+        if ($service) {
+            $service["user"] = $service->user;
             return response()->json($service, 200);
-        else
+        } else
             return response()->json("RESSOURCE_NOT_FOUND", 404);
     }
 
     public function getServiceByAdmin()
     {
         $user = Auth::user();
-        $service = Service::where('admin_id', $user->id)->first();
+        $service = Service::where('user_id', $user->id)->first();
         if ($service)
             return response()->json($service, 200);
         else
@@ -40,7 +41,6 @@ class ServiceController extends Controller
     public function store(Request $request)
     {
         $days = array("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday");
-        $status = array("OPENED", "CLOSED");
 
         $validator = Validator::make(
             $request->all(),
@@ -55,9 +55,7 @@ class ServiceController extends Controller
                 'open_days.*' => 'required|string|distinct|in:' . implode(',', $days),
                 'hoolidays' => "array",
                 'break_times' => "array",
-                'status' => 'required|in:' . implode(',', $status),
-                'provider_id' => 'required|numeric|min:0',
-                'username_admin' => ['required', 'string', 'max:255', 'min:6'],
+                'user_id' => 'required|numeric|min:0',
                 'img' => 'mimes:jpg,jpeg,png|max:2048',
             ]
         );
@@ -66,20 +64,20 @@ class ServiceController extends Controller
             return response()->json(['error' => $validator->errors()->first()], 401);
         }
         //VALIDATE USERNAME
-        $userAdmin = User::where('username', $request["username_admin"])->first();
+        $userAdmin = User::where('id', $request["user_id"])->first();
         if (!$userAdmin) return response()->json(['error' => "USER_NOT_FOUND"], 401);
-        if ($userAdmin && $userAdmin->role != "ADMIN_SAFF") return response()->json(['error' => "USER_INVALID_ROLE"], 401);
-        $serv = Service::where('admin_id', $userAdmin->id)->first();
-        if ($serv) return response()->json(['error' => "USER_ALREADY_AFFECTED_TO_SERVICE"], 401);
 
         if ($request["img"] != null) {
             $res = $request->file("img")->store("servicesImg");
             $request["image"] = substr($res, strpos($res, "/") + 1);
         }
+        $user = Auth::user();
+        $request["provider_id"] = $user->provider->id;
+        $request["status"] = null;
+
         $service = Service::create($request->all());
         //SEND REQUEST TO USER
         $dateTime = Carbon::now();
-        $user = Auth::user();
         Req::create(
             [
                 'status' => null,
@@ -102,7 +100,7 @@ class ServiceController extends Controller
     public function update(Request $request, Service $service)
     {
         $days = array("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday");
-        $status = array("OPENED", "CLOSED");
+        $status = array("ACCEPTED", "REFUSED");
 
         $validator = Validator::make(
             $request->all(),
@@ -130,7 +128,7 @@ class ServiceController extends Controller
             $userAdmin = User::where('username', $request["username_admin"])->first();
             if (!$userAdmin) return response()->json(['error' => "USER_NOT_FOUND"], 401);
             if ($userAdmin && $userAdmin->role != "ADMIN_SAFF") return response()->json(['error' => "USER_INVALID_ROLE"], 401);
-            $serv = Service::where('admin_id', $userAdmin->id)->first();
+            $serv = Service::where('user_id', $userAdmin->id)->first();
             if ($serv) return response()->json(['error' => "USER_ALREADY_AFFECTED_TO_SERVICE"], 401);
 
             //SEND REQUEST TO USER
@@ -166,8 +164,8 @@ class ServiceController extends Controller
             $res = $request->file("img")->store("servicesImg");
             $request["image"] = substr($res, strpos($res, "/") + 1);
         }
-        if(!$request["hoolidays"])$request["hoolidays"]=null;
-        if(!$request["break_times"])$request["break_times"]=null;
+        if (!$request["hoolidays"]) $request["hoolidays"] = null;
+        if (!$request["break_times"]) $request["break_times"] = null;
 
         $service->update($request->all());
 

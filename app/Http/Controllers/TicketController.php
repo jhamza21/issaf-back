@@ -83,6 +83,7 @@ class TicketController extends Controller
             [
                 'date' => 'required|date_format:Y-m-d',
                 'time' => 'required|date_format:H:i',
+                'number' => 'required|numeric|min:0',
                 'service_id' => 'required|numeric|min:0',
             ]
         );
@@ -99,12 +100,12 @@ class TicketController extends Controller
             ->whereDate('date', $request["date"])->whereTime('time', $request["time"])->first();
         if ($taked) return response()->json(['error' => "TICKET_ALREADY_TAKED"], 401);
 
-        $lastTicket = Ticket::where('service_id', $request['service_id'])->orderBy('created_at', 'desc')->first();
-        if ($lastTicket) {
-            $request['number'] = $lastTicket->number + 1;
-        } else {
-            $request['number'] = 1;
-        }
+        // $lastTicket = Ticket::where('service_id', $request['service_id'])->orderBy('created_at', 'desc')->first();
+        // if ($lastTicket) {
+        //     $request['number'] = $lastTicket->number + 1;
+        // } else {
+        //     $request['number'] = 1;
+        // }
         $request['status'] = 'IN_PROGRESS';
         $request["user_id"] = $user->id;
         $ticket = Ticket::create($request->all());

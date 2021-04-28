@@ -12,10 +12,11 @@ Route::post('logout', 'Auth\LoginController@logout');
 Route::get('providerImg/{imgName}', 'ProviderController@downloadImage');
 Route::get('serviceImg/{imgName}', 'ServiceController@downloadImage');
 
+
 //USER AUTHENTIFICATED
 Route::group(['middleware' => 'auth:api'], function () {
     //users
-    Route::get('users', 'UserController@index');
+    Route::get('users/{text}', 'UserController@getSuggestions');
     Route::put('updateAccount', 'UserController@update');
     Route::get('getUserByUsername/{username}', 'UserController@getUserByUsername');
     Route::get('getUserById/{id}', 'UserController@getUserById');

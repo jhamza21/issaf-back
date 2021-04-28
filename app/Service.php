@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Service extends Model
 {
-    protected $fillable = ['title', 'description', 'image', 'avg_time_per_client', 'counter', 'work_start_time', 'work_end_time', 'open_days','break_times','hoolidays', 'status','provider_id','admin_id'];
+    protected $fillable = ['title', 'description', 'image', 'avg_time_per_client', 'counter', 'work_start_time', 'work_end_time', 'open_days','break_times','hoolidays', 'status','provider_id','user_id'];
     protected $casts = [
         'open_days' => 'array',
         'break_times' => 'array',
@@ -18,4 +18,8 @@ class Service extends Model
     public function tickets(){
         return $this->hasMany(Ticket::class);
     } 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

@@ -20,8 +20,7 @@ class CreateUsersTable extends Migration
             $table->string('name');
             $table->string('email')->nullable()->unique();
             $table->string('mobile')->nullable();
-            $table->enum('sexe', ["HOMME","FEMME"]);
-            $table->enum('role', ["CLIENT","ADMIN_SERVICE","ADMIN_SAFF"]);
+            $table->string('region')->nullable();
             $table->string('api_token', 60)->unique()->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->rememberToken();

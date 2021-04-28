@@ -35,22 +35,25 @@ class ProviderController extends Controller
         $validator = Validator::make(
             $request->all(),
             [
+                'type' => ['required', 'string', 'max:255', 'min:2'],
                 'title' => ['required', 'string', 'max:255', 'min:2'],
                 'description' => ['required', 'string', 'min:8', 'max:255'],
                 'address' => ['string', 'max:255', 'min:6'],
                 'mobile' => ['string', 'max:20', 'min:16'],
+                'region' => ['required','string','min:2','max:20'],
                 'email' => ['string', 'email'],
                 'url' => ['string'],
-                'img' => 'required|mimes:jpg,jpeg,png|max:2048',
+                'img' => 'mimes:jpg,jpeg,png|max:2048',
             ]
         );
 
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()->first()], 401);
         }
-
-        $res = $request->file("img")->store("providersImg");
-        $request["image"] = substr($res, strpos($res, "/") + 1);
+        if ($request["img"] != null) {
+            $res = $request->file("img")->store("providersImg");
+            $request["image"] = substr($res, strpos($res, "/") + 1);
+        }
         $user = Auth::user();
         $request["user_id"] = $user->id;
         $provider = Provider::create($request->all());
@@ -71,10 +74,12 @@ class ProviderController extends Controller
         $validator = Validator::make(
             $request->all(),
             [
+                'type' => ['string', 'max:255', 'min:2'],
                 'title' => ['string', 'max:255', 'min:2'],
                 'description' => ['string', 'min:8', 'max:255'],
                 'address' => ['string', 'max:255', 'min:6'],
                 'mobile' => ['string', 'max:20', 'min:16'],
+                'region' => ['string','min:2','max:20'],
                 'email' => ['string', 'email'],
                 'url' => ['string'],
                 'img' => 'mimes:jpg,jpeg,png|max:2048',

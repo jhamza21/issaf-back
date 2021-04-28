@@ -52,17 +52,13 @@ class RegisterController extends Controller
      */
     protected function validator(array $data)
     {
-        $roles=array("CLIENT","ADMIN_SERVICE","ADMIN_SAFF");
-        $sexes=array("HOMME","FEMME");
         return Validator::make($data, [
             'username' => ['required','string', 'max:255','min:6', 'unique:users'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'name' => ['required','string', 'max:255','min:6'],
-            'sexe' => 'required|in:' . implode(',', $sexes),
-            'role' => 'required|in:' . implode(',', $roles),
             'email' => 'required|string|email|unique:users',
             'mobile' => 'required|string|min:16|max:20',
-
+            'region' => 'required|string|min:2|max:20',
             ]);
     }
 
@@ -77,12 +73,10 @@ class RegisterController extends Controller
         return User::create([
             'username' => $data['username'],
             'password' => Hash::make($data['password']),
-            'role' => $data['role'],
-            'sexe' => $data['sexe'],
             'name' => $data['name'],
             'email' => $data['email'],
             'mobile' => $data['mobile'],
-
+            'region' => $data['region'],
         ]);
     }
     protected function registered(Request $request, $user)

@@ -25,12 +25,11 @@ class CreateServicesTable extends Migration
             $table->json('open_days');
             $table->json('break_times')->nullable();
             $table->json('hoolidays')->nullable();
-            $table->enum('status', ["OPENED","CLOSED"]);
-            $table->enum('request_status', ["ACCEPTED","REFUSED"])->nullable();
+            $table->enum('status', ["ACCEPTED","REFUSED"])->nullable();
             $table->unsignedBigInteger('provider_id');
             $table->foreign('provider_id')->references('id')->on('providers')->onDelete('cascade');
-            $table->unsignedBigInteger('admin_id')->nullable();
-            $table->foreign('admin_id')->references('id')->on('users')->onDelete('cascade');
+            $table->unsignedBigInteger('user_id')->nullable();
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->timestamps();
         });
     }
