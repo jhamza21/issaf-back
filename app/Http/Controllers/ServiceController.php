@@ -8,6 +8,7 @@ use App\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Validator;
 
 class ServiceController extends Controller
@@ -20,6 +21,7 @@ class ServiceController extends Controller
 
     public function getServiceById(String $id)
     {
+
         $service = Service::where('id', $id)->first();
         if ($service) {
             $service["user"] = $service->user;
@@ -63,7 +65,7 @@ class ServiceController extends Controller
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()->first()], 401);
         }
-        //VALIDATE USERNAME
+        //VALIDATE USER
         $userAdmin = User::where('id', $request["user_id"])->first();
         if (!$userAdmin) return response()->json(['error' => "USER_NOT_FOUND"], 401);
 
@@ -124,12 +126,11 @@ class ServiceController extends Controller
             return response()->json(['error' => $validator->errors()->first()], 401);
         }
         //update username
-        if ($request["username_admin"] != null) {
-            $userAdmin = User::where('username', $request["username_admin"])->first();
+        if ($request["user_id"] != $service->user_id) {
+            $userAdmin = User::where('id', $request["user_id"])->first();
             if (!$userAdmin) return response()->json(['error' => "USER_NOT_FOUND"], 401);
-            if ($userAdmin && $userAdmin->role != "ADMIN_SAFF") return response()->json(['error' => "USER_INVALID_ROLE"], 401);
-            $serv = Service::where('user_id', $userAdmin->id)->first();
-            if ($serv) return response()->json(['error' => "USER_ALREADY_AFFECTED_TO_SERVICE"], 401);
+            //set service status to null
+            $request["status"] = null;
 
             //SEND REQUEST TO USER
             $dateTime = Carbon::now();
@@ -174,9 +175,15 @@ class ServiceController extends Controller
 
     public function delete(Service $service)
     {
+        //delete related request to service
         $req = Req::where("service_id", $service->id)->first();
         if ($req)
             $req->delete();
+        //delete related image to service 
+        $path = storage_path() . "/" . "app/servicesImg/" . $service->image;
+        if (File::exists($path)) {
+            File::delete($path);
+        }
         $service->delete();
         return response()->json(null, 204);
     }

@@ -19,9 +19,8 @@ class TicketController extends Controller
 {
     public function index()
     {
-
         $user = Auth::user();
-        $data = Ticket::select('tickets.id', 'tickets.number', 'tickets.date', 'tickets.time', 'tickets.status', 'services.title', 'services.description')->where('user_id', $user->id)
+        $data = Ticket::select('tickets.id', 'tickets.number', 'tickets.date', 'tickets.time', 'tickets.status', 'services.title', 'services.description')->where('tickets.user_id', $user->id)
             ->join('services', 'tickets.service_id', '=', 'services.id')
             ->get();
         return $data;
