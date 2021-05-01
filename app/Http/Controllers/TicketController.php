@@ -20,10 +20,11 @@ class TicketController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $data = Ticket::select('tickets.id', 'tickets.number', 'tickets.date', 'tickets.time', 'tickets.status', 'services.title', 'services.description')->where('tickets.user_id', $user->id)
-            ->join('services', 'tickets.service_id', '=', 'services.id')
-            ->get();
-        return $data;
+        $tickets = Ticket::where('user_id', $user->id)->get();
+        foreach ($tickets as $ticket) {
+            $ticket["service"] = Service::where('id', $ticket->service_id)->first();
+        }
+        return $tickets;
     }
 
     public function getAvailableTicketsByDate(string $date, string $service_id)
@@ -33,19 +34,22 @@ class TicketController extends Controller
         $availableTickets = array();
         //check day
         $day = Carbon::createFromFormat('Y-m-d', $date)->format('l');
-        if (!in_array($day, $service->open_days)) return response()->json($availableTickets, 200);
+        //   if (!in_array($day, $service->open_days)) return response()->json($availableTickets, 200);
         //check hoolidays
         if ($service->hoolidays && in_array($date, $service->hoolidays)) return response()->json($availableTickets, 200);
         $begin = new DateTime($service->work_start_time);
         $end   = new DateTime($service->work_end_time);
         $interval = DateInterval::createFromDateString($service->avg_time_per_client . ' min');
         $times    = new DatePeriod($begin, $interval, $end);
+        $todayDate = Carbon::now()->format('Y-m-d');
+        $todayTime = Carbon::now()->format('H:i');
         foreach ($times as $time) {
+            if ($date == $todayDate && $time < $todayTime) continue;
             //check break times
             if (!$this->timeInBreak(date_format($time, 'H:i'), $service->break_times)) {
                 $exist = DB::table('tickets')->where('service_id', $service_id)
                     ->whereDate('date', $date)->whereTime('time', $time)->first();
-                if (!$exist) $availableTickets[] = date_format($time, 'H:i');
+                if (!$exist || $exist->status == "CANCELED") $availableTickets[] = date_format($time, 'H:i');
             }
         }
 
@@ -99,12 +103,12 @@ class TicketController extends Controller
             ->whereDate('date', $request["date"])->whereTime('time', $request["time"])->first();
         if ($taked) return response()->json(['error' => "TICKET_ALREADY_TAKED"], 401);
 
-        // $lastTicket = Ticket::where('service_id', $request['service_id'])->orderBy('created_at', 'desc')->first();
-        // if ($lastTicket) {
-        //     $request['number'] = $lastTicket->number + 1;
-        // } else {
-        //     $request['number'] = 1;
-        // }
+        //update ticket number
+        $todayDate = Carbon::now()->format('Y-m-d');
+        if ($todayDate == $request["date"]) {
+            $service = Service::where('id', $request["service_id"])->first();
+            $request["number"] = $request["number"] + $service->counter;
+        }
         $request['status'] = 'IN_PROGRESS';
         $request["user_id"] = $user->id;
         $ticket = Ticket::create($request->all());
@@ -112,6 +116,48 @@ class TicketController extends Controller
         return response()->json($ticket, 201);
     }
 
+    
+    public function  reschudleTicket(Request $request)
+    {
+
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'date' => 'required|date_format:Y-m-d',
+                'time' => 'required|date_format:H:i',
+                'number' => 'required|numeric|min:0',
+                'service_id' => 'required|numeric|min:0',
+            ]
+        );
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 401);
+        }
+        $user = Auth::user();
+
+        //check if ticket already taked
+        $taked = DB::table('tickets')->where('service_id', $request["service_id"])
+            ->whereDate('date', $request["date"])->whereTime('time', $request["time"])->first();
+        if ($taked) return response()->json(['error' => "TICKET_ALREADY_TAKED"], 401);
+
+        //update ticket number
+        $todayDate = Carbon::now()->format('Y-m-d');
+        if ($todayDate == $request["date"]) {
+            $service = Service::where('id', $request["service_id"])->first();
+            $request["number"] = $request["number"] + $service->counter;
+        }
+
+        $request['status'] = 'IN_PROGRESS';
+        $request["user_id"] = $user->id;
+        $oldTicket = DB::table('tickets')->where('user_id', $user->id)->where('service_id', $request["service_id"])->where('status', 'IN_PROGRESS')
+            ->update([
+                "number" => $request["number"],
+                "date" => $request["date"],
+                "time" => $request["time"]
+            ]);
+
+        return response()->json($oldTicket, 201);
+    }
 
     public function update(Request $request, Ticket $ticket)
     {

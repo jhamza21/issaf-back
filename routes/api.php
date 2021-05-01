@@ -48,6 +48,7 @@ Route::group(['middleware' => 'auth:api'], function () {
     Route::get('tickets/{date}/{service_id}', 'TicketController@getAvailableTicketsByDate');
     Route::get('tickets/{ticket}', 'TicketController@show');
     Route::post('tickets', 'TicketController@store');
+    Route::put('tickets', 'TicketController@reschudleTicket');
     Route::put('tickets/{ticket}', 'TicketController@update');
     Route::delete('tickets/{ticket}', 'TicketController@delete');
 });
