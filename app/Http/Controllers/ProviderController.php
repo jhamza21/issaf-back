@@ -7,15 +7,13 @@ use App\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Auth;
-use Illuminate\Support\Facades\DB;
 
 class ProviderController extends Controller
 {
     public function getUserProvider()
     {
         $user = Auth::user();
-        $result = DB::table('providers')
-            ->where('user_id', $user->id)
+        $result = Provider::where('user_id', $user->id)
             ->first();
         return response()->json($result, 200);
     }
@@ -38,7 +36,6 @@ class ProviderController extends Controller
                 'type' => ['required', 'string', 'max:255', 'min:2'],
                 'title' => ['required', 'string', 'max:255', 'min:2'],
                 'description' => ['required', 'string', 'min:8', 'max:255'],
-                'address' => ['string', 'max:255', 'min:6'],
                 'mobile' => ['string', 'max:20', 'min:16'],
                 'region' => ['required','string','min:2','max:20'],
                 'email' => ['string', 'email'],
@@ -77,7 +74,6 @@ class ProviderController extends Controller
                 'type' => ['string', 'max:255', 'min:2'],
                 'title' => ['string', 'max:255', 'min:2'],
                 'description' => ['string', 'min:8', 'max:255'],
-                'address' => ['string', 'max:255', 'min:6'],
                 'mobile' => ['string', 'max:20', 'min:16'],
                 'region' => ['string','min:2','max:20'],
                 'email' => ['string', 'email'],

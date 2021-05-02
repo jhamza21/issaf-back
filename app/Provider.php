@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Provider extends Model
 {
-    protected $fillable = ['type', 'title', 'description', 'address', 'mobile', 'email', 'url', 'image', 'user_id','region'];
+    protected $fillable = ['type', 'title', 'description', 'mobile', 'email', 'url', 'image', 'user_id','region'];
     public function user()
     {
         return $this->belongsTo(User::class);

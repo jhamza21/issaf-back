@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Service;
 use App\Request as Req;
+use App\Ticket;
 use App\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -34,7 +35,7 @@ class ServiceController extends Controller
     {
         $user = Auth::user();
         $service = Service::where('user_id', $user->id)->first();
-        if ($service)
+        if ($service && $service->status == "ACCEPTED")
             return response()->json($service, 200);
         else
             return response()->json("RESSOURCE_NOT_FOUND", 404);
@@ -118,6 +119,7 @@ class ServiceController extends Controller
                 'hoolidays' => "array",
                 'break_times' => "array",
                 'status' => 'in:' . implode(',', $status),
+                'user_id' => 'numeric|min:0',
                 'img' => 'mimes:jpg,jpeg,png|max:2048',
             ]
         );
@@ -168,6 +170,53 @@ class ServiceController extends Controller
         if (!$request["hoolidays"]) $request["hoolidays"] = null;
         if (!$request["break_times"]) $request["break_times"] = null;
 
+        $service->update($request->all());
+
+        return response()->json($service, 200);
+    }
+    public function resetCounter(Request $request, Service $service)
+    {
+
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'counter' => ['numeric', 'max:10000', 'min:0'],
+            ]
+        );
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 401);
+        }
+
+
+        $service->update($request->all());
+
+        return response()->json($service, 200);
+    }
+
+    public function incrementCounter(Request $request, Service $service)
+    {
+
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'ticket_status' => ['required', 'string'],
+            ]
+        );
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 401);
+        }
+        //validate ticket
+        $date = Carbon::now()->format('Y-m-d');
+        $ticket = Ticket::where('service_id', $service->id)->where('status', 'IN_PROGRESS')->where('number', $service->counter)->where('date', $date)->first();
+        if ($ticket) {
+            $ticket->update([
+                'status' => $request['ticket_status'] == 'DONE' ? 'DONE' : 'UNDONE'
+            ]);
+        }
+        //increment counter
+        $service->counter++;
         $service->update($request->all());
 
         return response()->json($service, 200);

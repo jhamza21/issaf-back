@@ -34,6 +34,8 @@ Route::group(['middleware' => 'auth:api'], function () {
     Route::get('getServiceById/{id}', 'ServiceController@getServiceById');
     Route::post('services', 'ServiceController@store');
     Route::post('services/{service}', 'ServiceController@update');
+    Route::put('services/{service}', 'ServiceController@resetCounter');
+    Route::put('incrementService/{service}', 'ServiceController@incrementCounter');
     Route::delete('services/{service}', 'ServiceController@delete');
     //requests
     Route::get('requests', 'RequestController@index');

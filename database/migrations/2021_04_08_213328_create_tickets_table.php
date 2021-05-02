@@ -18,7 +18,7 @@ class CreateTicketsTable extends Migration
             $table->unsignedInteger('number');
             $table->date('date');
             $table->time('time');
-            $table->enum('status', ["IN_PROGRESS","DONE","DELAYED","CANCELED"]);
+            $table->enum('status', ["IN_PROGRESS","DONE","UNDONE"]);
             $table->unsignedBigInteger('user_id');
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->unsignedBigInteger('service_id');

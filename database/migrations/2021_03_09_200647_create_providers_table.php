@@ -18,7 +18,6 @@ class CreateProvidersTable extends Migration
             $table->string('type');
             $table->string('title');
             $table->text('description');
-            $table->text('address')->nullable();
             $table->string('mobile')->nullable();
             $table->string('url')->nullable();
             $table->string('email')->nullable();

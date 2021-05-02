@@ -11,7 +11,6 @@ use Auth;
 use DateInterval;
 use DatePeriod;
 use DateTime;
-use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 
@@ -29,27 +28,26 @@ class TicketController extends Controller
 
     public function getAvailableTicketsByDate(string $date, string $service_id)
     {
-
         $service = Service::where('id', $service_id)->first();
         $availableTickets = array();
         //check day
         $day = Carbon::createFromFormat('Y-m-d', $date)->format('l');
-        //   if (!in_array($day, $service->open_days)) return response()->json($availableTickets, 200);
+        if (!in_array($day, $service->open_days)) return response()->json($availableTickets, 200);
         //check hoolidays
         if ($service->hoolidays && in_array($date, $service->hoolidays)) return response()->json($availableTickets, 200);
         $begin = new DateTime($service->work_start_time);
         $end   = new DateTime($service->work_end_time);
         $interval = DateInterval::createFromDateString($service->avg_time_per_client . ' min');
         $times    = new DatePeriod($begin, $interval, $end);
-        $todayDate = Carbon::now()->format('Y-m-d');
-        $todayTime = Carbon::now()->format('H:i');
+        $todayTime = Carbon::now()->addHour()->format('H:i');
+
         foreach ($times as $time) {
-            if ($date == $todayDate && $time < $todayTime) continue;
+            if ($date == date('Y-m-d') && $todayTime > $time->format('H:i')) continue;
             //check break times
             if (!$this->timeInBreak(date_format($time, 'H:i'), $service->break_times)) {
-                $exist = DB::table('tickets')->where('service_id', $service_id)
+                $exist = Ticket::where('service_id', $service_id)
                     ->whereDate('date', $date)->whereTime('time', $time)->first();
-                if (!$exist || $exist->status == "CANCELED") $availableTickets[] = date_format($time, 'H:i');
+                if (!$exist || $exist->status == "UNDONE") $availableTickets[] = date_format($time, 'H:i');
             }
         }
 
@@ -96,10 +94,10 @@ class TicketController extends Controller
         }
         $user = Auth::user();
         //check duplicate ticket
-        $exist = DB::table('tickets')->where('user_id', $user->id)->where('service_id', $request["service_id"])->where('status', 'IN_PROGRESS')->first();
+        $exist = Ticket::where('user_id', $user->id)->where('service_id', $request["service_id"])->where('status', 'IN_PROGRESS')->first();
         if ($exist) return response()->json(['error' => "ERROR_DUPLICATED_TICKET"], 401);
         //check if ticket already taked
-        $taked = DB::table('tickets')->where('service_id', $request["service_id"])
+        $taked = Ticket::where('service_id', $request["service_id"])
             ->whereDate('date', $request["date"])->whereTime('time', $request["time"])->first();
         if ($taked) return response()->json(['error' => "TICKET_ALREADY_TAKED"], 401);
 
@@ -116,7 +114,7 @@ class TicketController extends Controller
         return response()->json($ticket, 201);
     }
 
-    
+
     public function  reschudleTicket(Request $request)
     {
 
@@ -136,7 +134,7 @@ class TicketController extends Controller
         $user = Auth::user();
 
         //check if ticket already taked
-        $taked = DB::table('tickets')->where('service_id', $request["service_id"])
+        $taked = Ticket::where('service_id', $request["service_id"])
             ->whereDate('date', $request["date"])->whereTime('time', $request["time"])->first();
         if ($taked) return response()->json(['error' => "TICKET_ALREADY_TAKED"], 401);
 
@@ -149,7 +147,7 @@ class TicketController extends Controller
 
         $request['status'] = 'IN_PROGRESS';
         $request["user_id"] = $user->id;
-        $oldTicket = DB::table('tickets')->where('user_id', $user->id)->where('service_id', $request["service_id"])->where('status', 'IN_PROGRESS')
+        $oldTicket = Ticket::where('user_id', $user->id)->where('service_id', $request["service_id"])->where('status', 'IN_PROGRESS')
             ->update([
                 "number" => $request["number"],
                 "date" => $request["date"],
@@ -161,7 +159,7 @@ class TicketController extends Controller
 
     public function update(Request $request, Ticket $ticket)
     {
-        $status = array("IN_PROGRESS", "DONE", "DELAYED", "CANCELED");
+        $status = array("IN_PROGRESS", "DONE", "UNDONE");
 
         $validator = Validator::make(
             $request->all(),
