@@ -11,6 +11,7 @@ Route::post('tokenIsValid', function () {
 Route::post('logout', 'Auth\LoginController@logout');
 Route::get('providerImg/{imgName}', 'ProviderController@downloadImage');
 Route::get('serviceImg/{imgName}', 'ServiceController@downloadImage');
+Route::get('test', 'TicketController@sendNotif');
 
 
 //USER AUTHENTIFICATED

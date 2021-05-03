@@ -77,6 +77,8 @@ class RegisterController extends Controller
             'email' => $data['email'],
             'mobile' => $data['mobile'],
             'region' => $data['region'],
+            'messaging_token' => $data['messaging_token'],
+
         ]);
     }
     protected function registered(Request $request, $user)

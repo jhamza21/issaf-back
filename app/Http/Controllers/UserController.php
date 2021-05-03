@@ -52,6 +52,8 @@ class UserController extends Controller
                 'name' => 'min:4|max:80|string',
                 'password' => 'min:8|string',
                 'region' => 'string|min:2|max:20',
+                'messaging_token' => 'string',
+
 
             ]);
 
@@ -62,8 +64,10 @@ class UserController extends Controller
                 if ($request['email']) $user->email = $request['email'];
                 if ($request['mobile']) $user->mobile = $request['mobile'];
                 if ($request['name']) $user->name = $request['name'];
-                if ($request['region']) $user->region = $request['region'];
                 if ($request['password']) $user->password = Hash::make($request['password']);
+                if ($request['region']) $user->region = $request['region'];
+                if ($request['messaging_token']) $user->messaging_token = $request['messaging_token'];
+
                 $user->save();
                 return response()->json($user, 200);
             }
