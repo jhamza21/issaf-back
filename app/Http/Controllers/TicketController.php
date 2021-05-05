@@ -70,12 +70,6 @@ class TicketController extends Controller
         }
     }
 
-    public function show(Ticket $ticket)
-    {
-        $ticket["service"] = $ticket->service;
-        return $ticket;
-    }
-
     public function store(Request $request)
     {
 
@@ -155,28 +149,6 @@ class TicketController extends Controller
             ]);
 
         return response()->json($oldTicket, 201);
-    }
-
-    public function update(Request $request, Ticket $ticket)
-    {
-        $status = array("IN_PROGRESS", "DONE", "UNDONE");
-
-        $validator = Validator::make(
-            $request->all(),
-            [
-                'number' => ['numeric', 'max:10000', 'min:0'],
-                'status' => 'in:' . implode(',', $status),
-                'date_time' => 'date_format:Y-m-d H:i:s'
-            ]
-        );
-
-
-        if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()->first()], 401);
-        }
-        $ticket->update($request->all());
-
-        return response()->json($ticket, 200);
     }
 
     public function delete(Ticket $ticket)

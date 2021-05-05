@@ -10,20 +10,6 @@ use Illuminate\Support\Facades\Auth;
 class RequestController extends Controller
 {
 
-    public function index()
-    {
-        return UserRequest::all();
-    }
-
-    public function getRequestByService($service)
-    {
-        $result = UserRequest::where('service_id', $service)->first();
-        if ($result)
-            return response()->json($result, 200);
-        else
-            return response()->json("RESSOURCE_NOT_FOUND", 404);
-    }
-
     public function getSendedRequests()
     {
         $user = Auth::user();

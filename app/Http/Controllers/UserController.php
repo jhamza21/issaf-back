@@ -17,26 +17,20 @@ class UserController extends Controller
             ->orWhere('email', 'LIKE', "%{$text}%")
             ->orWhere('name', 'LIKE', "%{$text}%")
             ->get();
-                $idUser = Auth::user()->id;
-                $filtred=[];
-                foreach ($users as $user) {
-                    if($idUser!=$user->id)$filtred[]=$user;                }
+        $idUser = Auth::user()->id;
+        $filtred = [];
+        foreach ($users as $user)
+            if ($idUser != $user->id) $filtred[] = $user;
         return $filtred;
     }
 
-    public function getUserByUsername(String $username)
+    public function getUserByEmail(String $email)
     {
-        $user = User::where('username', $username)->first();
-        if ($user)
+        $user = User::where('email', $email)->first();
+        if ($user) {
+            $user->generateToken();
             return response()->json($user, 200);
-        return response()->json("RESSOURCE_NOT_FOUND", 404);
-    }
-
-    public function getUserById(String $id)
-    {
-        $user = User::where('id', $id)->first();
-        if ($user)
-            return response()->json($user, 200);
+        }
         return response()->json("RESSOURCE_NOT_FOUND", 404);
     }
 

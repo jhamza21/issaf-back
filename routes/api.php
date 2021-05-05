@@ -11,7 +11,7 @@ Route::post('tokenIsValid', function () {
 Route::post('logout', 'Auth\LoginController@logout');
 Route::get('providerImg/{imgName}', 'ProviderController@downloadImage');
 Route::get('serviceImg/{imgName}', 'ServiceController@downloadImage');
-Route::get('test', 'TicketController@sendNotif');
+Route::get('getUserByEmail/{email}', 'UserController@getUserByEmail');
 
 
 //USER AUTHENTIFICATED
@@ -19,8 +19,6 @@ Route::group(['middleware' => 'auth:api'], function () {
     //users
     Route::get('users/{text}', 'UserController@getSuggestions');
     Route::put('updateAccount', 'UserController@update');
-    Route::get('getUserByUsername/{username}', 'UserController@getUserByUsername');
-    Route::get('getUserById/{id}', 'UserController@getUserById');
 
     //providers
     Route::get('getUserProvider', 'ProviderController@getUserProvider');
@@ -39,19 +37,15 @@ Route::group(['middleware' => 'auth:api'], function () {
     Route::put('incrementService/{service}', 'ServiceController@incrementCounter');
     Route::delete('services/{service}', 'ServiceController@delete');
     //requests
-    Route::get('requests', 'RequestController@index');
     Route::get('requests/sended', 'RequestController@getSendedRequests');
     Route::get('requests/received', 'RequestController@getReceivedRequests');
-    Route::get('requests/{service}', 'RequestController@getRequestByService');
     Route::put('requests/refuse/{request}', 'RequestController@refuseRequest');
     Route::put('requests/accept/{request}', 'RequestController@acceptRequest');
     Route::delete('requests/{request}', 'RequestController@delete');
     //tickets
     Route::get('tickets', 'TicketController@index');
     Route::get('tickets/{date}/{service_id}', 'TicketController@getAvailableTicketsByDate');
-    Route::get('tickets/{ticket}', 'TicketController@show');
     Route::post('tickets', 'TicketController@store');
     Route::put('tickets', 'TicketController@reschudleTicket');
-    Route::put('tickets/{ticket}', 'TicketController@update');
     Route::delete('tickets/{ticket}', 'TicketController@delete');
 });
