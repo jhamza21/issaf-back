@@ -42,7 +42,7 @@ class TicketController extends Controller
         $todayTime = Carbon::now()->addHour()->format('H:i');
 
         foreach ($times as $time) {
-            if ($date == date('Y-m-d') && $todayTime > $time->format('H   :i')) continue;
+            if ($date == date('Y-m-d') && $todayTime > $time->format('H:i')) continue;
             //check break times
             if (!$this->timeInBreak(date_format($time, 'H:i'), $service->break_times)) {
                 $exist = Ticket::where('service_id', $service_id)
