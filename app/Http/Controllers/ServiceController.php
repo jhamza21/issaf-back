@@ -238,7 +238,7 @@ class ServiceController extends Controller
             return response()->json(['error' => $validator->errors()->first()], 401);
         }
         //validate ticket
-        $date = Carbon::now()->addDay()->format('Y-m-d');
+        $date = Carbon::now()->format('Y-m-d');
         $ticket = Ticket::where('service_id', $service->id)->where('status', 'IN_PROGRESS')->where('number', $service->counter)->where('date', $date)->first();
         if ($ticket) {
             $ticket->update([
