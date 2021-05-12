@@ -9,6 +9,11 @@ use Auth;
 
 class ProviderController extends Controller
 {
+    public function index()
+    {
+        return Provider::all();
+    }
+
     public function getUserProvider()
     {
         $user = Auth::user();
@@ -16,14 +21,16 @@ class ProviderController extends Controller
             ->first();
         return response()->json($result, 200);
     }
-    public function index()
-    {
-        return Provider::all();
-    }
+
 
     public function show(Provider $provider)
     {
         $provider["services"] = $provider->services;
+        foreach ($provider["services"] as $service) {
+            if (count($service->users) != 0) $service["status"] = "ACCEPTED";
+            else $service["status"] = "REFUSED";
+        }
+
         return $provider;
     }
 
@@ -36,7 +43,7 @@ class ProviderController extends Controller
                 'title' => ['required', 'string', 'max:255', 'min:2'],
                 'description' => ['required', 'string', 'min:8', 'max:255'],
                 'mobile' => ['string', 'max:20', 'min:16'],
-                'region' => ['required','string','min:2','max:20'],
+                'region' => ['required', 'string', 'min:2', 'max:20'],
                 'email' => ['string', 'email'],
                 'url' => ['string'],
                 'img' => 'mimes:jpg,jpeg,png|max:2048',
@@ -74,7 +81,7 @@ class ProviderController extends Controller
                 'title' => ['string', 'max:255', 'min:2'],
                 'description' => ['string', 'min:8', 'max:255'],
                 'mobile' => ['string', 'max:20', 'min:16'],
-                'region' => ['string','min:2','max:20'],
+                'region' => ['string', 'min:2', 'max:20'],
                 'email' => ['string', 'email'],
                 'url' => ['string'],
                 'img' => 'mimes:jpg,jpeg,png|max:2048',

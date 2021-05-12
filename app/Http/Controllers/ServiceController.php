@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Notification;
 use App\Service;
 use App\Request as Req;
 use App\Ticket;
@@ -20,25 +21,59 @@ class ServiceController extends Controller
     {
         return Service::all();
     }
+    public function getServiceTickets(String $id)
+    {
+        $service = Service::where('id', $id)->first();
+        if ($service) {
+
+            return response()->json($service->tickets, 200);
+        } else
+            return response()->json("RESSOURCE_NOT_FOUND", 404);
+    }
 
     public function getServiceById(String $id)
     {
 
         $service = Service::where('id', $id)->first();
         if ($service) {
-            $service["user"] = $service->user;
+            //users that accepted to be operator
+            $service["users"] = $service->users;
+            foreach ($service["users"] as $user) {
+                $user["status"] = "ACCEPTED";
+            }
+            //users from request
+            $requests = Req::where('service_id', $id)->get();
+            foreach ($requests as $req) {
+                if ($req->status == "ACCEPTED") continue;
+                if ($req->status == "REFUSED") {
+                    $req->receiver["status"] = "REFUSED";
+                    $service["users"][] = $req->receiver;
+                } else
+                    $service["users"][] = $req->receiver;
+            }
             return response()->json($service, 200);
         } else
             return response()->json("RESSOURCE_NOT_FOUND", 404);
     }
 
-    public function getServiceByAdmin()
+    public function getServiceByRespo()
     {
         $user = Auth::user();
-        $service = Service::where('user_id', $user->id)->first();
-        if ($service && $service->status == "ACCEPTED")
+        $service = $user->service;
+        if ($service) {
             return response()->json($service, 200);
-        else
+        } else
+            return response()->json("NOT_AFFECTED_TO_SERVICE", 404);
+    }
+
+    public function getServicesByAdmin()
+    {
+        $user = Auth::user();
+        $provider = $user->provider;
+        if ($provider) {
+            $services = $provider->services;
+            return response()->json($services, 200);
+        } else
             return response()->json("RESSOURCE_NOT_FOUND", 404);
     }
 
@@ -57,9 +92,9 @@ class ServiceController extends Controller
                 'work_end_time' => ['required', 'date_format:H:i', 'after:work_start_time'],
                 'open_days' => "required|array|min:1",
                 'open_days.*' => 'required|string|distinct|in:' . implode(',', $days),
+                'users' => "array",
                 'hoolidays' => "array",
                 'break_times' => "array",
-                'user_id' => 'required|numeric|min:0',
                 'img' => 'mimes:jpg,jpeg,png|max:2048',
             ]
         );
@@ -67,9 +102,6 @@ class ServiceController extends Controller
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()->first()], 401);
         }
-        //VALIDATE USER
-        $userAdmin = User::where('id', $request["user_id"])->first();
-        if (!$userAdmin) return response()->json(['error' => "USER_NOT_FOUND"], 401);
 
         if ($request["img"] != null) {
             $res = $request->file("img")->store("servicesImg");
@@ -80,19 +112,22 @@ class ServiceController extends Controller
         $request["status"] = null;
 
         $service = Service::create($request->all());
-        //SEND REQUEST TO USER
-        $dateTime = Carbon::now();
-        Req::create(
-            [
-                'status' => null,
-                'date_time' => $dateTime->toDateTimeString(),
-                'sender_id' => $user->id,
-                'receiver_id' =>  $userAdmin->id,
-                'service_id' => $service->id,
+        //SEND REQUEST TO USERS
+        if ($request["users"]) {
+            $dateTime = Carbon::now();
+            foreach ($request["users"] as $userId) {
+                Req::create(
+                    [
+                        'status' => null,
+                        'date_time' => $dateTime->toDateTimeString(),
+                        'sender_id' => $user->id,
+                        'receiver_id' =>  $userId,
+                        'service_id' => $service->id,
 
-            ]
-        );
-
+                    ]
+                );
+            }
+        }
         return response()->json($service, 201);
     }
 
@@ -101,10 +136,34 @@ class ServiceController extends Controller
         return response()->download(storage_path() . "/" . "app/servicesImg/" . $imgName);
     }
 
+    private function contains($array1, $id)
+    {
+        foreach ($array1 as $el)
+            if ((string) $el->id == $id) return true;
+        return false;
+    }
+
+    private function diff($array1, $arrayOfIds)
+    {
+        $res = [];
+        foreach ($arrayOfIds as $id) {
+            if (!$this->contains($array1, $id)) $res[] = $id;
+        }
+        return $res;
+    }
+
+    private function undiff($array1, $arrayOfIds)
+    {
+        $res = [];
+        foreach ($array1 as $user) {
+            if (!in_array((string) $user->id, $arrayOfIds)) $res[] = $user->id;
+        }
+        return $res;
+    }
+
     public function update(Request $request, Service $service)
     {
         $days = array("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday");
-        $status = array("ACCEPTED", "REFUSED");
 
         $validator = Validator::make(
             $request->all(),
@@ -119,8 +178,7 @@ class ServiceController extends Controller
                 'open_days.*' => 'string|distinct|in:' . implode(',', $days),
                 'hoolidays' => "array",
                 'break_times' => "array",
-                'status' => 'in:' . implode(',', $status),
-                'user_id' => 'numeric|min:0',
+                'users' => 'array',
                 'img' => 'mimes:jpg,jpeg,png|max:2048',
             ]
         );
@@ -128,41 +186,45 @@ class ServiceController extends Controller
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()->first()], 401);
         }
-        //update username
-        if ($request["user_id"] != $service->user_id) {
-            $userAdmin = User::where('id', $request["user_id"])->first();
-            if (!$userAdmin) return response()->json(['error' => "USER_NOT_FOUND"], 401);
-            //set service status to null
-            $request["status"] = null;
-
-            //SEND REQUEST TO USER
-            $dateTime = Carbon::now();
-            $user = Auth::user();
-            $req = Req::where('service_id', $request->id)->first();
-            if ($req) {
-                $req->update([
-                    [
-                        'status' => null,
-                        'date_time' => $dateTime->toDateTimeString(),
-                        'sender_id' => $user->id,
-                        'receiver_id' =>  $userAdmin->id,
-                        'service_id' => $service->id,
-
-                    ]
-                ]);
-            } else {
-                Req::create(
-                    [
-                        'status' => null,
-                        'date_time' => $dateTime->toDateTimeString(),
-                        'sender_id' => $user->id,
-                        'receiver_id' =>  $userAdmin->id,
-                        'service_id' => $service->id,
-
-                    ]
-                );
-            }
+        if (!$request["users"]) $request['users'] = [];
+        //users from request
+        $oldUsers = $service->users;
+        $requests = Req::where('service_id', $service->id)->get();
+        foreach ($requests as $req) {
+            if ($req->status == "ACCEPTED") continue;
+            $oldUsers[] = $req->receiver;
         }
+        //new operators
+        $diff = $this->diff($oldUsers, $request["users"]);
+        //removed operators
+        $undiff = $this->undiff($oldUsers, $request["users"]);
+
+        $dateTime = Carbon::now();
+        $connectedUser = Auth::user();
+        //SEND REQUEST TO NEW OPERATORS
+        foreach ($diff as $userId) {
+            Req::create(
+                [
+                    'status' => null,
+                    'date_time' => $dateTime->toDateTimeString(),
+                    'sender_id' => $connectedUser->id,
+                    'receiver_id' =>  $userId,
+                    'service_id' => $service->id,
+
+                ]
+            );
+        }
+        //DELETE REQUESTS AND SERVICE FROM REMOVED OPERATORS
+        foreach ($undiff as $userId) {
+            $req = Req::where('service_id', $service->id)->where('receiver_id', $userId)->first();
+            if ($req) $req->delete();
+            $user = User::where('id', $userId)->first();
+            if ($user->service_id != null)
+                $user->update([
+                    "service_id" => null
+                ]);
+        }
+
         //update image
         if ($request["img"] != null) {
             $res = $request->file("img")->store("servicesImg");
@@ -195,12 +257,12 @@ class ServiceController extends Controller
         return response()->json($service, 200);
     }
 
-    private function sendNotif($receiverToken, $body)
+    private function sendNotif($receiversToken, $body)
     {
         try {
             $SERVER_API_KEY = "AAAAUXABvuk:APA91bGzKA4BLwPlLjbnWLKO13IcLQ5Qeem1ZYc2OUAlCD45HUhQpyv_lDX_zgc4-RklQtWAbKf8ltUOJ31Foon7bDYXc9UnF-4zOh52dU0U71QthCN8jEa0rlNA3CvoRVafeeK5_XQ3";
             $data = [
-                "registration_ids" => [$receiverToken],
+                "registration_ids" => $receiversToken,
                 "notification" => [
                     "title" => "E-SAFF",
                     "body" => $body,
@@ -231,6 +293,7 @@ class ServiceController extends Controller
             $request->all(),
             [
                 'ticket_status' => ['required', 'string'],
+                'duration' => ['required', 'numeric', 'min:0']
             ]
         );
 
@@ -242,20 +305,24 @@ class ServiceController extends Controller
         $ticket = Ticket::where('service_id', $service->id)->where('status', 'IN_PROGRESS')->where('number', $service->counter)->where('date', $date)->first();
         if ($ticket) {
             $ticket->update([
-                'status' => $request['ticket_status'] == 'DONE' ? 'DONE' : 'UNDONE'
+                'duration' => $request['duration'],
+                'status' => $request['ticket_status']
             ]);
         }
         //send notif to next user
         $nextTicket = Ticket::where('service_id', $service->id)->where('status', 'IN_PROGRESS')->where('number', $service->counter + 1)->where('date', $date)->first();
         if ($nextTicket) {
             $receiver = User::where('id', $nextTicket->user_id)->first();
-            $this->sendNotif($receiver->messaging_token, "C'est votre tour ! Avancez");
+            $this->sendNotif([$receiver->messaging_token], "C'est votre tour ! Avancez");
         }
-        //send notif to 2 next user
-        $nextSecTicket = Ticket::where('service_id', $service->id)->where('status', 'IN_PROGRESS')->where('number', $service->counter + 3)->where('date', $date)->first();
-        if ($nextSecTicket) {
-            $receiverSec = User::where('id', $nextSecTicket->user_id)->first();
-            $this->sendNotif($receiverSec->messaging_token, "Il reste deux clients avant votre tour ! Soyez prết !");
+
+        //send notif to planified notifications
+        $notifs = Notification::select("messaging_token")->where('service_id', $service->id)->where('date', $date)->where('number', $service->counter + 1)->get();
+        if (count($notifs) > 0) {
+            $text = "On serre maintenant le client num ";
+            $text += $service->counter + 1;
+            $text += " ! Soyez prết !";
+            $this->sendNotif($notifs, $text);
         }
         //increment counter
         $service->counter++;

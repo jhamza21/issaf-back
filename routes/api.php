@@ -29,8 +29,10 @@ Route::group(['middleware' => 'auth:api'], function () {
     Route::delete('providers/{provider}', 'ProviderController@delete');
     //services
     Route::get('services', 'ServiceController@index');
-    Route::get('getServiceByAdmin', 'ServiceController@getServiceByAdmin');
+    Route::get('getServiceByRespo', 'ServiceController@getServiceByRespo');
+    Route::get('getServicesByAdmin', 'ServiceController@getServicesByAdmin');
     Route::get('getServiceById/{id}', 'ServiceController@getServiceById');
+    Route::get('getServiceTickets/{id}', 'ServiceController@getServiceTickets');
     Route::post('services', 'ServiceController@store');
     Route::post('services/{service}', 'ServiceController@update');
     Route::put('services/{service}', 'ServiceController@resetCounter');
@@ -44,8 +46,10 @@ Route::group(['middleware' => 'auth:api'], function () {
     Route::delete('requests/{request}', 'RequestController@delete');
     //tickets
     Route::get('tickets', 'TicketController@index');
+    Route::get('ticketsRespo', 'TicketController@ticketsResponsible');
     Route::get('tickets/{date}/{service_id}', 'TicketController@getAvailableTicketsByDate');
     Route::post('tickets', 'TicketController@store');
+    Route::post('ticketsRespo', 'TicketController@storeRespo');
     Route::put('tickets', 'TicketController@reschudleTicket');
     Route::delete('tickets/{ticket}', 'TicketController@delete');
 });

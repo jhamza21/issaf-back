@@ -44,15 +44,13 @@ class RequestController extends Controller
 
     public function acceptRequest(UserRequest $request)
     {
-        $service = Service::where('user_id', $request->receiver_id)->where("status", "ACCEPTED")->first();
-        if ($service) return response()->json(['error' => "USER_ALREADY_AFFECTED_TO_SERVICE"], 401);
+        $user = User::where('id', $request->receiver_id)->first();
+        if ($user->service_id) return response()->json(['error' => "USER_ALREADY_AFFECTED_TO_SERVICE"], 401);
 
         //update service admin
-        $service = Service::where('id', $request->service_id)->first();
-        $service->update([
-            "status" => "ACCEPTED"
+        $user->update([
+            "service_id" => $request["service_id"],
         ]);
-
         $request->update([
             "status" => "ACCEPTED",
         ]);

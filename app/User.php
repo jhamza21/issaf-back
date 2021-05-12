@@ -17,7 +17,7 @@ class User extends Authenticatable
      * @var array
      */
     protected $fillable = [
-        'email', 'password', 'username', 'mobile', 'name', 'region', 'messaging_token'
+        'email', 'password', 'username', 'mobile', 'name', 'region', 'messaging_token', 'service_id'
     ];
 
     /**
@@ -45,9 +45,17 @@ class User extends Authenticatable
 
         return $this->api_token;
     }
-    public function tickets(){
+
+    public function service()
+    {
+        return $this->belongsTo(Service::class);
+    }
+
+    public function tickets()
+    {
         return $this->hasMany(Ticket::class);
-    } 
+    }
+
     public function provider()
     {
         return $this->hasOne(Provider::class);
