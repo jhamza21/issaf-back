@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Notification;
 use App\Service;
 use App\Ticket;
-
+use App\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Auth;
@@ -13,7 +13,7 @@ use DateInterval;
 use DatePeriod;
 use DateTime;
 use Carbon\Carbon;
-
+use Exception;
 
 class TicketController extends Controller
 {
@@ -27,10 +27,9 @@ class TicketController extends Controller
         return $tickets;
     }
 
-    public function ticketsResponsible()
+    public function ticketsBySerice(Service $service)
     {
-        $user = Auth::user();
-        $tickets = Ticket::where('user_id', $user->id)->where('name', "!=", null)->get();
+        $tickets = Ticket::where('service_id', $service->id)->where('name', "!=", null)->get();
         foreach ($tickets as $ticket) {
             $ticket["service"] = Service::where('id', $ticket->service_id)->first();
         }
@@ -38,15 +37,8 @@ class TicketController extends Controller
     }
 
 
-    public function getAvailableTicketsByDate(string $date, string $service_id)
+    public function getAvailableTicketsByDate(string $date, Service $service)
     {
-        $service = null;
-        if ($service_id == -1) {
-            $user = Auth::user();
-            $service = $user->service;
-            $service_id = $service->id;
-        } else
-            $service = Service::where('id', $service_id)->first();
         $availableTickets = array();
         //check day
         $day = Carbon::createFromFormat('Y-m-d', $date)->format('l');
@@ -58,22 +50,21 @@ class TicketController extends Controller
         $interval = DateInterval::createFromDateString($service->avg_time_per_client . ' min');
         $times    = new DatePeriod($begin, $interval, $end);
         $todayTime = Carbon::now()->addHour()->format('H:i');
-
+        $i = 1;
         foreach ($times as $time) {
             if (!$this->timeInBreak(date_format($time, 'H:i'), $service->break_times)) {
-                if ($date == date('Y-m-d') && $todayTime > $time->format('H:i')) {
-                    $availableTickets[date_format($time, 'H:i')] = "N";
-                } else {
-                    $exist = Ticket::where('service_id', $service_id)
+                if ($date == date('Y-m-d') && ($todayTime > $time->format('H:i') || $service->counter > $i))
+                    $availableTickets[date_format($time, 'H:i')] = false;
+                else {
+                    $exist = Ticket::where('service_id', $service->id)
                         ->whereDate('date', $date)->whereTime('time', $time)->first();
                     if (!$exist || $exist->status == "UNDONE") {
-                        $availableTickets[date_format($time, 'H:i')] = "T";
-                    } else if ($exist->status == "IN_PROGRESS") {
-                        $availableTickets[date_format($time, 'H:i')] = "N";
+                        $availableTickets[date_format($time, 'H:i')] = true;
                     } else
-                        $availableTickets[date_format($time, 'H:i')] = "F";
+                        $availableTickets[date_format($time, 'H:i')] = false;
                 }
             }
+            $i++;
         }
 
         return response()->json($availableTickets, 200);
@@ -121,12 +112,6 @@ class TicketController extends Controller
             ->whereDate('date', $request["date"])->whereTime('time', $request["time"])->first();
         if ($taked) return response()->json(['error' => "TICKET_ALREADY_TAKED"], 401);
 
-        //update ticket number
-        $todayDate = Carbon::now()->format('Y-m-d');
-        $service = Service::where('id', $request["service_id"])->first();
-        if ($todayDate == $request["date"]) {
-            $request["number"] = $request["number"] + $service->counter;
-        }
         $request['status'] = 'IN_PROGRESS';
         $request['duration'] = 0;
         $request['name'] = null;
@@ -134,20 +119,19 @@ class TicketController extends Controller
         $ticket = Ticket::create($request->all());
         if (!$request["notifications"]) $request["notifications"] = [];
         foreach ($request['notifications'] as $notif) {
-            if ($request['number'] - $notif > $service->counter)
-                Notification::create([
-                    'number' => $request['number'] - $notif,
-                    'ticket_id' => $ticket->id,
-                    'service_id' => $request["service_id"],
-                    'date' => $request["date"],
-                    'messaging_token' => $user->messaging_token
-                ]);
+            Notification::create([
+                'number' =>  $notif,
+                'ticket_id' => $ticket->id,
+                'service_id' => $request["service_id"],
+                'date' => $request["date"],
+                'messaging_token' => $user->messaging_token
+            ]);
         }
 
         return response()->json($ticket, 201);
     }
 
-    public function storeRespo(Request $request)
+    public function addTicketToService(Request $request, Service $service)
     {
 
         $validator = Validator::make(
@@ -164,17 +148,11 @@ class TicketController extends Controller
             return response()->json(['error' => $validator->errors()->first()], 401);
         }
         $user = Auth::user();
-        $service = $user->service;
         //check if ticket already taked
         $taked = Ticket::where('service_id', $service->id)
             ->whereDate('date', $request["date"])->whereTime('time', $request["time"])->first();
         if ($taked) return response()->json(['error' => "TICKET_ALREADY_TAKED"], 401);
 
-        //update ticket number
-        $todayDate = Carbon::now()->format('Y-m-d');
-        if ($todayDate == $request["date"]) {
-            $request["number"] = $request["number"] + $service->counter;
-        }
         $request['status'] = 'IN_PROGRESS';
         $request['duration'] = 0;
         $request["user_id"] = $user->id;
@@ -184,7 +162,7 @@ class TicketController extends Controller
         return response()->json($ticket, 201);
     }
 
-    public function  reschudleTicket(Request $request)
+    public function  reschudleTicket(Request $request, Ticket $ticket)
     {
 
         $validator = Validator::make(
@@ -209,35 +187,27 @@ class TicketController extends Controller
             ->whereDate('date', $request["date"])->whereTime('time', $request["time"])->first();
         if ($taked) return response()->json(['error' => "TICKET_ALREADY_TAKED"], 401);
 
-        //update ticket number
-        $todayDate = Carbon::now()->format('Y-m-d');
-        $service = Service::where('id', $request["service_id"])->first();
-        if ($todayDate == $request["date"]) {
-            $request["number"] = $request["number"] + $service->counter;
-        }
 
         $request['status'] = 'IN_PROGRESS';
         $request["user_id"] = $user->id;
-        $oldTicket = Ticket::where('user_id', $user->id)->where('service_id', $request["service_id"])->where('status', 'IN_PROGRESS')->first();
-        $newTicket = $oldTicket->update([
+        $newTicket = $ticket->update([
             "number" => $request["number"],
             "date" => $request["date"],
             "time" => $request["time"]
         ]);
-        $notifications = Notification::where('ticket_id', $oldTicket->id)->get();
+        $notifications = Notification::where('ticket_id', $ticket->id)->get();
         foreach ($notifications as $notif) {
             $notif->delete();
         }
         if (!$request["notifications"]) $request["notifications"] = [];
         foreach ($request['notifications'] as $notif) {
-            if ($request['number'] - $notif > $service->counter)
-                Notification::create([
-                    'number' => $request['number'] - $notif,
-                    'ticket_id' => $oldTicket->id,
-                    'service_id' => $request["service_id"],
-                    'date' => $request["date"],
-                    'messaging_token' => $user->messaging_token
-                ]);
+            Notification::create([
+                'number' => $$notif,
+                'ticket_id' => $oldTicket->id,
+                'service_id' => $request["service_id"],
+                'date' => $request["date"],
+                'messaging_token' => $user->messaging_token
+            ]);
         }
 
 
@@ -252,5 +222,83 @@ class TicketController extends Controller
         }
         $ticket->delete();
         return response()->json(null, 204);
+    }
+
+    private function sendNotif($receiverToken, $body)
+    {
+        try {
+            $SERVER_API_KEY = "AAAAUXABvuk:APA91bGzKA4BLwPlLjbnWLKO13IcLQ5Qeem1ZYc2OUAlCD45HUhQpyv_lDX_zgc4-RklQtWAbKf8ltUOJ31Foon7bDYXc9UnF-4zOh52dU0U71QthCN8jEa0rlNA3CvoRVafeeK5_XQ3";
+            $data = [
+                "registration_ids" => [$receiverToken],
+                "notification" => [
+                    "title" => "E-SAFF",
+                    "body" => $body,
+                    "sound" => "default"
+                ]
+            ];
+            $dataString = json_encode($data);
+            $headers = [
+                "Authorization: key=" . $SERVER_API_KEY,
+                "Content-Type: application/json"
+            ];
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, "https://fcm.googleapis.com/fcm/send");
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $dataString);
+            curl_exec($ch);
+        } catch (Exception $e) { }
+    }
+
+
+    public function validateTicket(Request $request, int $ticketId, Service $service)
+    {
+
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'ticket_status' => ['required', 'string'],
+                'duration' => ['required', 'numeric', 'min:0']
+            ]
+        );
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 401);
+        }
+        $ticket = Ticket::where('id', $ticketId)->first();
+        $date = Carbon::now()->format('Y-m-d');
+        if ($ticket) {
+            //validate ticket
+            $ticket->update([
+                'duration' => $request['duration'],
+                'status' => $request['ticket_status']
+            ]);
+        }
+        if (!($ticket && $ticket->number > $service->counter)) $service->update(["counter" => $service->counter + 1]);
+        $service["tickets"] = $service->tickets;
+        foreach ($service["tickets"] as $tick) {
+            $tick["user"] = User::where("id", $tick["user_id"])->first();
+        }
+
+        //send notification to next user
+        $nextUser = Ticket::where('date', $date)->where('service_id', $service->id)->where('status', 'IN_PROGRESS')->where('number', $service->counter)->first();
+        if ($nextUser) {
+            $receiv = User::where('id', $nextUser->user_id)->first();
+            $this->sendNotif($receiv->messaging_token, "C'est votre tour!");
+        }
+        $nextTickets = Ticket::where('date', $date)->where('service_id', $service->id)->where('status', 'IN_PROGRESS')->get();
+        //send planified notifications
+        for ($i = 0; $i < count($nextTickets); $i++) {
+            foreach ($nextTickets[$i]->notifications as $notif) {
+                if ($nextTickets[$i]->number - $notif->number == $service->counter) {
+                    $text = "Il reste " . $i . " tickets avant vous! Soyez prêt !";
+                    $this->sendNotif($notif->messaging_token, $text);
+                }
+            }
+        }
+
+        return response()->json($service, 200);
     }
 }

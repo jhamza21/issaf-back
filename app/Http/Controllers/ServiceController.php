@@ -2,13 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Notification;
 use App\Service;
 use App\Request as Req;
-use App\Ticket;
 use App\User;
 use Carbon\Carbon;
-use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
@@ -36,6 +33,10 @@ class ServiceController extends Controller
 
         $service = Service::where('id', $id)->first();
         if ($service) {
+            $service["tickets"] = $service->tickets;
+            foreach ($service["tickets"] as $tick) {
+                $tick["user"] = User::where("id", $tick["user_id"])->first();
+            }
             //users that accepted to be operator
             $service["users"] = $service->users;
             foreach ($service["users"] as $user) {
@@ -61,6 +62,10 @@ class ServiceController extends Controller
         $user = Auth::user();
         $service = $user->service;
         if ($service) {
+            $service["tickets"] = $service->tickets;
+            foreach ($service["tickets"] as $tick) {
+                $tick["user"] = User::where("id", $tick["user_id"])->first();
+            }
             return response()->json($service, 200);
         } else
             return response()->json("NOT_AFFECTED_TO_SERVICE", 404);
@@ -87,7 +92,6 @@ class ServiceController extends Controller
                 'title' => ['required', 'string', 'max:255', 'min:2'],
                 'description' => ['string', 'min:4', 'max:255'],
                 'avg_time_per_client' => ['required', 'numeric', 'max:300', 'min:1'],
-                'counter' => ['required', 'numeric', 'max:10000', 'min:0'],
                 'work_start_time' => ['required', 'date_format:H:i'],
                 'work_end_time' => ['required', 'date_format:H:i', 'after:work_start_time'],
                 'open_days' => "required|array|min:1",
@@ -110,6 +114,7 @@ class ServiceController extends Controller
         $user = Auth::user();
         $request["provider_id"] = $user->provider->id;
         $request["status"] = null;
+        $request["counter"] = "1";
 
         $service = Service::create($request->all());
         //SEND REQUEST TO USERS
@@ -171,7 +176,6 @@ class ServiceController extends Controller
                 'title' => ['string', 'max:255', 'min:2'],
                 'description' => ['string', 'min:4', 'max:255'],
                 'avg_time_per_client' => ['numeric', 'max:300', 'min:1'],
-                'counter' => ['numeric', 'max:10000', 'min:0'],
                 'work_start_time' => ['date_format:H:i'],
                 'work_end_time' => ['date_format:H:i', 'after:work_start_time'],
                 'open_days' => "array|min:1",
@@ -237,95 +241,23 @@ class ServiceController extends Controller
 
         return response()->json($service, 200);
     }
-    public function resetCounter(Request $request, Service $service)
+
+  
+    public function updateCounter(Request $request, Service $service)
     {
+        $days = array("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday");
 
         $validator = Validator::make(
             $request->all(),
             [
-                'counter' => ['numeric', 'max:10000', 'min:0'],
+                'counter' => ['numeric', 'min:0'],
+          
             ]
         );
 
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()->first()], 401);
         }
-
-
-        $service->update($request->all());
-
-        return response()->json($service, 200);
-    }
-
-    private function sendNotif($receiversToken, $body)
-    {
-        try {
-            $SERVER_API_KEY = "AAAAUXABvuk:APA91bGzKA4BLwPlLjbnWLKO13IcLQ5Qeem1ZYc2OUAlCD45HUhQpyv_lDX_zgc4-RklQtWAbKf8ltUOJ31Foon7bDYXc9UnF-4zOh52dU0U71QthCN8jEa0rlNA3CvoRVafeeK5_XQ3";
-            $data = [
-                "registration_ids" => $receiversToken,
-                "notification" => [
-                    "title" => "E-SAFF",
-                    "body" => $body,
-                    "sound" => "default"
-                ]
-            ];
-            $dataString = json_encode($data);
-            $headers = [
-                "Authorization: key=" . $SERVER_API_KEY,
-                "Content-Type: application/json"
-            ];
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, "https://fcm.googleapis.com/fcm/send");
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $dataString);
-            curl_exec($ch);
-        } catch (Exception $e) { }
-    }
-
-
-    public function incrementCounter(Request $request, Service $service)
-    {
-
-        $validator = Validator::make(
-            $request->all(),
-            [
-                'ticket_status' => ['required', 'string'],
-                'duration' => ['required', 'numeric', 'min:0']
-            ]
-        );
-
-        if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()->first()], 401);
-        }
-        //validate ticket
-        $date = Carbon::now()->format('Y-m-d');
-        $ticket = Ticket::where('service_id', $service->id)->where('status', 'IN_PROGRESS')->where('number', $service->counter)->where('date', $date)->first();
-        if ($ticket) {
-            $ticket->update([
-                'duration' => $request['duration'],
-                'status' => $request['ticket_status']
-            ]);
-        }
-        //send notif to next user
-        $nextTicket = Ticket::where('service_id', $service->id)->where('status', 'IN_PROGRESS')->where('number', $service->counter + 1)->where('date', $date)->first();
-        if ($nextTicket) {
-            $receiver = User::where('id', $nextTicket->user_id)->first();
-            $this->sendNotif([$receiver->messaging_token], "C'est votre tour ! Avancez");
-        }
-
-        //send notif to planified notifications
-        $notifs = Notification::select("messaging_token")->where('service_id', $service->id)->where('date', $date)->where('number', $service->counter + 1)->get();
-        if (count($notifs) > 0) {
-            $text = "On serre maintenant le client num ";
-            $text += $service->counter + 1;
-            $text += " ! Soyez prết !";
-            $this->sendNotif($notifs, $text);
-        }
-        //increment counter
-        $service->counter++;
         $service->update($request->all());
 
         return response()->json($service, 200);
