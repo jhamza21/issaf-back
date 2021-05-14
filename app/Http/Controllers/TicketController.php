@@ -58,7 +58,7 @@ class TicketController extends Controller
                 else {
                     $exist = Ticket::where('service_id', $service->id)
                         ->whereDate('date', $date)->whereTime('time', $time)->first();
-                    if (!$exist || $exist->status == "UNDONE") {
+                    if (!$exist || $exist->status != "IN_PROGRESS") {
                         $availableTickets[date_format($time, 'H:i')] = true;
                     } else
                         $availableTickets[date_format($time, 'H:i')] = false;
