@@ -75,7 +75,7 @@ class TicketController extends Controller
         if (!$breaks) return false;
         foreach ($breaks as $break) {
             $startTime = Carbon::createFromFormat('H:i', substr($break, 0, 5));
-            $endTime = Carbon::createFromFormat('H:i', substr($break, 10, 5));
+            $endTime = Carbon::createFromFormat('H:i', substr($break, 9, 5));
             $currentTime = Carbon::createFromFormat('H:i', $time);
 
             if ($currentTime->between($startTime, $endTime, true)) {
@@ -122,9 +122,6 @@ class TicketController extends Controller
             Notification::create([
                 'number' =>  $notif,
                 'ticket_id' => $ticket->id,
-                'service_id' => $request["service_id"],
-                'date' => $request["date"],
-                'messaging_token' => $user->messaging_token
             ]);
         }
 
@@ -195,7 +192,7 @@ class TicketController extends Controller
             "date" => $request["date"],
             "time" => $request["time"]
         ]);
-        $notifications = Notification::where('ticket_id', $ticket->id)->get();
+        $notifications = $newTicket->notifications;
         foreach ($notifications as $notif) {
             $notif->delete();
         }
@@ -203,10 +200,7 @@ class TicketController extends Controller
         foreach ($request['notifications'] as $notif) {
             Notification::create([
                 'number' => $$notif,
-                'ticket_id' => $oldTicket->id,
-                'service_id' => $request["service_id"],
-                'date' => $request["date"],
-                'messaging_token' => $user->messaging_token
+                'ticket_id' => $newTicket->id,
             ]);
         }
 
@@ -224,14 +218,14 @@ class TicketController extends Controller
         return response()->json(null, 204);
     }
 
-    private function sendNotif($receiverToken, $body)
+    private function sendNotif($receiverToken, $body,$title)
     {
         try {
             $SERVER_API_KEY = "AAAAUXABvuk:APA91bGzKA4BLwPlLjbnWLKO13IcLQ5Qeem1ZYc2OUAlCD45HUhQpyv_lDX_zgc4-RklQtWAbKf8ltUOJ31Foon7bDYXc9UnF-4zOh52dU0U71QthCN8jEa0rlNA3CvoRVafeeK5_XQ3";
             $data = [
                 "registration_ids" => [$receiverToken],
                 "notification" => [
-                    "title" => "E-SAFF",
+                    "title" => $title,
                     "body" => $body,
                     "sound" => "default"
                 ]
@@ -286,15 +280,16 @@ class TicketController extends Controller
         $nextUser = Ticket::where('date', $date)->where('service_id', $service->id)->where('status', 'IN_PROGRESS')->where('number', $service->counter)->first();
         if ($nextUser) {
             $receiv = User::where('id', $nextUser->user_id)->first();
-            $this->sendNotif($receiv->messaging_token, "C'est votre tour!");
+            $this->sendNotif($receiv->messaging_token, "C'est votre tour !","E-SAFF : ".$service->name);
         }
         $nextTickets = Ticket::where('date', $date)->where('service_id', $service->id)->where('status', 'IN_PROGRESS')->get();
         //send planified notifications
         for ($i = 0; $i < count($nextTickets); $i++) {
             foreach ($nextTickets[$i]->notifications as $notif) {
                 if ($nextTickets[$i]->number - $notif->number == $service->counter) {
-                    $text = "Il reste " . $i . " tickets avant vous! Soyez prêt !";
-                    $this->sendNotif($notif->messaging_token, $text);
+                    $text = "Il reste " . $i . " tickets avant votre rendez-vous. Soyez prêt !";
+                    $user=$nextTickets[$i]->user;
+                    $this->sendNotif($user->messaging_token, $text,"E-SAFF : ".$service->name);
                 }
             }
         }
