@@ -28,8 +28,8 @@ class RequestController extends Controller
         $result = UserRequest::where('receiver_id', $user->id)->get();
         foreach ($result as $req) {
             $req["service"] = Service::where('id', $req->service_id)->first();
-            $req["sender"] = $user;
-            $req["receiver"] = User::where('id', $req->receiver_id)->first();
+            $req["receiver"] = $user;
+            $req["sender"] = User::where('id', $req->sender_id)->first();
         }
         return response()->json($result, 200);
     }

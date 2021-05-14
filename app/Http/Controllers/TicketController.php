@@ -22,6 +22,7 @@ class TicketController extends Controller
         $user = Auth::user();
         $tickets = Ticket::where('user_id', $user->id)->where('name', null)->get();
         foreach ($tickets as $ticket) {
+            $ticket["notifications"]=$ticket->notifications;
             $ticket["service"] = Service::where('id', $ticket->service_id)->first();
         }
         return $tickets;
@@ -31,6 +32,7 @@ class TicketController extends Controller
     {
         $tickets = Ticket::where('service_id', $service->id)->where('name', "!=", null)->get();
         foreach ($tickets as $ticket) {
+            $ticket["notifications"]=$ticket->notifications;
             $ticket["service"] = Service::where('id', $ticket->service_id)->first();
         }
         return $tickets;
@@ -96,6 +98,7 @@ class TicketController extends Controller
                 'time' => 'required|date_format:H:i',
                 'number' => 'required|numeric|min:0',
                 'service_id' => 'required|numeric|min:0',
+                'name'=>'string',
                 'notifications' => 'array'
             ]
         );
@@ -105,8 +108,10 @@ class TicketController extends Controller
         }
         $user = Auth::user();
         //check duplicate ticket
+        if($request["name"]){
         $exist = Ticket::where('user_id', $user->id)->where('service_id', $request["service_id"])->where('name', null)->where('status', 'IN_PROGRESS')->first();
         if ($exist) return response()->json(['error' => "ERROR_DUPLICATED_TICKET"], 401);
+        }
         //check if ticket already taked
         $taked = Ticket::where('service_id', $request["service_id"])
             ->whereDate('date', $request["date"])->whereTime('time', $request["time"])->first();
@@ -114,7 +119,6 @@ class TicketController extends Controller
 
         $request['status'] = 'IN_PROGRESS';
         $request['duration'] = 0;
-        $request['name'] = null;
         $request["user_id"] = $user->id;
         $ticket = Ticket::create($request->all());
         if (!$request["notifications"]) $request["notifications"] = [];
@@ -125,37 +129,6 @@ class TicketController extends Controller
             ]);
         }
 
-        return response()->json($ticket, 201);
-    }
-
-    public function addTicketToService(Request $request, Service $service)
-    {
-
-        $validator = Validator::make(
-            $request->all(),
-            [
-                'date' => 'required|date_format:Y-m-d',
-                'time' => 'required|date_format:H:i',
-                'number' => 'required|numeric|min:0',
-                'name' => 'required|string'
-            ]
-        );
-
-        if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()->first()], 401);
-        }
-        $user = Auth::user();
-        //check if ticket already taked
-        $taked = Ticket::where('service_id', $service->id)
-            ->whereDate('date', $request["date"])->whereTime('time', $request["time"])->first();
-        if ($taked) return response()->json(['error' => "TICKET_ALREADY_TAKED"], 401);
-
-        $request['status'] = 'IN_PROGRESS';
-        $request['duration'] = 0;
-        $request["user_id"] = $user->id;
-        $request["service_id"] = $service->id;
-
-        $ticket = Ticket::create($request->all());
         return response()->json($ticket, 201);
     }
 
@@ -180,42 +153,35 @@ class TicketController extends Controller
         $user = Auth::user();
 
         //check if ticket already taked
+        if($request["time"]!=$ticket->time){
         $taked = Ticket::where('service_id', $request["service_id"])
             ->whereDate('date', $request["date"])->whereTime('time', $request["time"])->first();
         if ($taked) return response()->json(['error' => "TICKET_ALREADY_TAKED"], 401);
-
+        }
 
         $request['status'] = 'IN_PROGRESS';
         $request["user_id"] = $user->id;
-        $newTicket = $ticket->update([
+         $ticket->update([
             "number" => $request["number"],
             "date" => $request["date"],
-            "time" => $request["time"]
+            "time" => $request["time"],
+            "name" => $request["name"]
+
         ]);
-        $notifications = $newTicket->notifications;
-        foreach ($notifications as $notif) {
+        $oldNotifications = $ticket->notifications;
+        foreach ($oldNotifications as $notif) {
             $notif->delete();
         }
         if (!$request["notifications"]) $request["notifications"] = [];
         foreach ($request['notifications'] as $notif) {
             Notification::create([
-                'number' => $$notif,
-                'ticket_id' => $newTicket->id,
+                'number' => $notif,
+                'ticket_id' => $ticket->id,
             ]);
         }
 
 
-        return response()->json($newTicket, 201);
-    }
-
-    public function delete(Ticket $ticket)
-    {
-        $notifications = Notification::where('ticket_id', $ticket->id)->get();
-        foreach ($notifications as $notif) {
-            $notif->delete();
-        }
-        $ticket->delete();
-        return response()->json(null, 204);
+        return response()->json($ticket, 201);
     }
 
     private function sendNotif($receiverToken, $body,$title)
@@ -280,20 +246,30 @@ class TicketController extends Controller
         $nextUser = Ticket::where('date', $date)->where('service_id', $service->id)->where('status', 'IN_PROGRESS')->where('number', $service->counter)->first();
         if ($nextUser) {
             $receiv = User::where('id', $nextUser->user_id)->first();
-            $this->sendNotif($receiv->messaging_token, "C'est votre tour !","E-SAFF : ".$service->name);
+            $this->sendNotif($receiv->messaging_token, "C'est votre tour !","E-SAFF : ".$service->title);
         }
         $nextTickets = Ticket::where('date', $date)->where('service_id', $service->id)->where('status', 'IN_PROGRESS')->get();
         //send planified notifications
         for ($i = 0; $i < count($nextTickets); $i++) {
             foreach ($nextTickets[$i]->notifications as $notif) {
                 if ($nextTickets[$i]->number - $notif->number == $service->counter) {
-                    $text = "Il reste " . $i . " tickets avant votre rendez-vous. Soyez prêt !";
+                    $text = "Il reste " . $notif . " tickets avant votre rendez-vous. Soyez prêt !";
                     $user=$nextTickets[$i]->user;
-                    $this->sendNotif($user->messaging_token, $text,"E-SAFF : ".$service->name);
+                    $this->sendNotif($user->messaging_token, $text,"E-SAFF : ".$service->title);
                 }
             }
         }
 
         return response()->json($service, 200);
+    }
+
+    public function delete(Ticket $ticket)
+    {
+        $notifications = Notification::where('ticket_id', $ticket->id)->get();
+        foreach ($notifications as $notif) {
+            $notif->delete();
+        }
+        $ticket->delete();
+        return response()->json(null, 204);
     }
 }
