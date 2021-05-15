@@ -255,7 +255,7 @@ class TicketController extends Controller
             return response()->json(['error' => $validator->errors()->first()], 401);
         }
         $date = Carbon::now()->format('Y-m-d');
-        $ticket = Ticket::where('service_id', $service->id)->where('number'->$service->counter)->whereDate('date',$date)->first();
+        $ticket = Ticket::where('service_id', $service->id)->where('number',$service->counter)->whereDate('date',$date)->first();
         if ($ticket) {
             //store duration and status of ticket
             $ticket->update([
