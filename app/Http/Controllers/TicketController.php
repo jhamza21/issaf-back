@@ -175,7 +175,7 @@ class TicketController extends Controller
         $user = Auth::user();
 
         //check if ticket already taked
-        if ($request["time"] != $ticket->time) {
+        if ($request["time"]->format('H:i') != $ticket->time->format('H:i')) {
             $taked = Ticket::where('service_id', $request["service_id"])
                 ->whereDate('date', $request["date"])->whereTime('time', $request["time"])->first();
             if ($taked) return response()->json(['error' => "TICKET_ALREADY_TAKED"], 401);
