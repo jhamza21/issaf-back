@@ -17,12 +17,17 @@ class UserController extends Controller
     //remove connected user from suggestions
     public function getSuggestions(String $text)
     {
-        $users = User::where('username', 'LIKE', "%{$text}%")->where('id', '!=', Auth::user()->id)
+        $connectedUser = Auth::user();
+        $users = User::where('username', 'LIKE', "%{$text}%")
             ->orWhere('email', 'LIKE', "%{$text}%")
             ->orWhere('name', 'LIKE', "%{$text}%")
             ->get();
-        return response()->json($users, 404);
+        $filtred = [];
+        foreach ($users as $user)
+            if ($connectedUser != $user->id) $filtred[] = $user;
+        return response()->json($filtred, 200);
     }
+
 
     //get user by email (used to connect user with GOOGLE ACCOUNT)
     public function getUserByEmail(String $email)
