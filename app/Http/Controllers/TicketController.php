@@ -126,9 +126,9 @@ class TicketController extends Controller
             return response()->json(['error' => $validator->errors()->first()], 401);
         }
         $user = Auth::user();
-        //check duplicate ticket in service only if user is client 
+        //check duplicate ticket in service only if user is client (name==null)
         //operator can book sevral tickets in one service for several clients
-        if ($request["name"] != null) {
+        if ($request["name"] == null) {
             $exist = Ticket::where('user_id', $user->id)->where('service_id', $request["service_id"])->where('name', null)->where('status', 'IN_PROGRESS')->first();
             if ($exist) return response()->json(['error' => "ERROR_DUPLICATED_TICKET"], 401);
         }
