@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Auth;
 
 class RequestController extends Controller
 {
-
+    //return sended request of connected user
     public function getSendedRequests()
     {
         $user = Auth::user();
@@ -22,6 +22,7 @@ class RequestController extends Controller
         return response()->json($result, 200);
     }
 
+    //return received requests of connected user
     public function getReceivedRequests()
     {
         $user = Auth::user();
@@ -34,40 +35,38 @@ class RequestController extends Controller
         return response()->json($result, 200);
     }
 
+    //refuse a request
     public function refuseRequest(UserRequest $request)
     {
+        //update request status to refused
         $request->update([
             "status" => "REFUSED",
         ]);
         return response()->json(null, 200);
     }
 
+    //accept a request
     public function acceptRequest(UserRequest $request)
     {
-        $user = User::where('id', $request->receiver_id)->first();
+        $user =$request->receiver;
+        //check if user already is handling another service
         if ($user->service_id) return response()->json(['error' => "USER_ALREADY_AFFECTED_TO_SERVICE"], 401);
 
-        //update service admin
+        //affect service to user
         $user->update([
             "service_id" => $request["service_id"],
         ]);
+        //update request status to accepted
         $request->update([
             "status" => "ACCEPTED",
         ]);
         return response()->json(null, 200);
     }
 
+    //delete a request
     public function delete(UserRequest $request)
     {
-        if ($request->status == "ACCEPTED" || $request->status == "REFUSED")
-            $request->delete();
-        else {
-            $service = Service::where('id', $request->service_id)->first();
-            $service->update([
-                "user_id" => null
-            ]);
-            $request->delete();
-        }
+        $request->delete();
         return response()->json(null, 204);
     }
 }

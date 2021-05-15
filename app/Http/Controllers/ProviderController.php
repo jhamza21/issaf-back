@@ -5,35 +5,33 @@ namespace App\Http\Controllers;
 use App\Provider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\File;
 use Auth;
 
 class ProviderController extends Controller
 {
+    //return all providers
     public function index()
     {
         return Provider::all();
     }
 
-    public function getUserProvider()
+
+    //get connected user provider
+    public function getProviderByUser()
     {
         $user = Auth::user();
-        $result = Provider::where('user_id', $user->id)
-            ->first();
-        return response()->json($result, 200);
+        return response()->json($user->provider, 200);
     }
 
-
-    public function show(Provider $provider)
+    //get provider by id
+    public function getProviderById(Provider $provider)
     {
         $provider["services"] = $provider->services;
-        foreach ($provider["services"] as $service) {
-            if (count($service->users) != 0) $service["status"] = "ACCEPTED";
-            else $service["status"] = "REFUSED";
-        }
-
-        return $provider;
+        return response()->json($provider, 200);
     }
 
+    //store new provider
     public function store(Request $request)
     {
         $validator = Validator::make(
@@ -65,13 +63,14 @@ class ProviderController extends Controller
         return response()->json($provider, 201);
     }
 
+    //return provider image
     public function downloadImage(String $imgName)
     {
         return response()->download(storage_path() . "/" . "app/providersImg/" . $imgName);
     }
 
 
-
+    //update provider
     public function update(Request $request, Provider $provider)
     {
         $validator = Validator::make(
@@ -100,8 +99,34 @@ class ProviderController extends Controller
         return response()->json($provider, 200);
     }
 
+    //delete provider
     public function delete(Provider $provider)
     {
+        foreach ($provider->services as $service) {
+            //delete related request to service
+            foreach ($service->requests as $req) {
+                $req->delete();
+            }
+             //delete related tickets to service
+             foreach ($service->tickets as $tic) {
+                //delete related notifications
+                foreach ($tic->notifications as $notif) {
+                    $notif->delete();
+                }
+                $tic->delete();
+            }
+            //delete related image to service 
+            $path = storage_path() . "/" . "app/servicesImg/" . $service->image;
+            if (File::exists($path)) {
+                File::delete($path);
+            }
+            $service->delete();
+        }
+        //delete related image to provider 
+        $path = storage_path() . "/" . "app/providersImg/" . $provider->image;
+        if (File::exists($path)) {
+            File::delete($path);
+        }
         $provider->delete();
         return response()->json(null, 204);
     }

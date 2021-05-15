@@ -13,29 +13,44 @@ use Illuminate\Support\Facades\Validator;
 
 class ServiceController extends Controller
 {
-
-    public function index()
+    //return service handled by connected operator
+    public function getServiceByRespo()
     {
-        return Service::all();
-    }
-    public function getServiceTickets(String $id)
-    {
-        $service = Service::where('id', $id)->first();
+        $user = Auth::user();
+        $service = $user->service;
         if ($service) {
+            $service["tickets"] = $service->tickets;
+            foreach ($service["tickets"] as $tick) {
+                $tick["user"] = $tick->user;
+            }
+            return response()->json($service, 200);
+        } else
+            return response()->json("NOT_AFFECTED_TO_SERVICE", 404);
+    }
 
-            return response()->json($service->tickets, 200);
+    //return admin services
+    public function getServicesByAdmin()
+    {
+        $user = Auth::user();
+        $provider = $user->provider;
+        if ($provider) {
+            $services = $provider->services;
+            return response()->json($services, 200);
         } else
             return response()->json("RESSOURCE_NOT_FOUND", 404);
     }
 
+    //return service by id
+    //return service tickets
+    //return users that handle this service
+    //affect to each user status(has accepted/ refuse to handle service)
     public function getServiceById(String $id)
     {
-
         $service = Service::where('id', $id)->first();
         if ($service) {
             $service["tickets"] = $service->tickets;
             foreach ($service["tickets"] as $tick) {
-                $tick["user"] = User::where("id", $tick["user_id"])->first();
+                $tick["user"] = $tick->user;
             }
             //users that accepted to be operator
             $service["users"] = $service->users;
@@ -57,31 +72,7 @@ class ServiceController extends Controller
             return response()->json("RESSOURCE_NOT_FOUND", 404);
     }
 
-    public function getServiceByRespo()
-    {
-        $user = Auth::user();
-        $service = $user->service;
-        if ($service) {
-            $service["tickets"] = $service->tickets;
-            foreach ($service["tickets"] as $tick) {
-                $tick["user"] = User::where("id", $tick["user_id"])->first();
-            }
-            return response()->json($service, 200);
-        } else
-            return response()->json("NOT_AFFECTED_TO_SERVICE", 404);
-    }
-
-    public function getServicesByAdmin()
-    {
-        $user = Auth::user();
-        $provider = $user->provider;
-        if ($provider) {
-            $services = $provider->services;
-            return response()->json($services, 200);
-        } else
-            return response()->json("RESSOURCE_NOT_FOUND", 404);
-    }
-
+    //store new service
     public function store(Request $request)
     {
         $days = array("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday");
@@ -117,7 +108,7 @@ class ServiceController extends Controller
         $request["counter"] = "1";
 
         $service = Service::create($request->all());
-        //SEND REQUEST TO USERS
+        //SEND REQUEST TO OPERATORS
         if ($request["users"]) {
             $dateTime = Carbon::now();
             foreach ($request["users"] as $userId) {
@@ -136,11 +127,10 @@ class ServiceController extends Controller
         return response()->json($service, 201);
     }
 
-    public function downloadImage(String $imgName)
-    {
-        return response()->download(storage_path() . "/" . "app/servicesImg/" . $imgName);
-    }
 
+
+    //$array1 is an array of user object
+    //check if $array1 contains $id
     private function contains($array1, $id)
     {
         foreach ($array1 as $el)
@@ -148,6 +138,9 @@ class ServiceController extends Controller
         return false;
     }
 
+    //$array1 is an array of user object
+    //$arrayOfIds is an array of users ids
+    //return ids from $arrayOfIds that not exist in $array1
     private function diff($array1, $arrayOfIds)
     {
         $res = [];
@@ -156,7 +149,9 @@ class ServiceController extends Controller
         }
         return $res;
     }
-
+    //$array1 is an array of user object
+    //$arrayOfIds is an array of users ids
+    //return user ids of $array1 that not exist in $arrayOfIds
     private function undiff($array1, $arrayOfIds)
     {
         $res = [];
@@ -166,6 +161,7 @@ class ServiceController extends Controller
         return $res;
     }
 
+    //update a service
     public function update(Request $request, Service $service)
     {
         $days = array("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday");
@@ -220,6 +216,7 @@ class ServiceController extends Controller
         }
         //DELETE REQUESTS AND SERVICE FROM REMOVED OPERATORS
         foreach ($undiff as $userId) {
+            //delete if there is a request sent to user
             $req = Req::where('service_id', $service->id)->where('receiver_id', $userId)->first();
             if ($req) $req->delete();
             $user = User::where('id', $userId)->first();
@@ -242,33 +239,37 @@ class ServiceController extends Controller
         return response()->json($service, 200);
     }
 
-  
+    //update service counter
     public function updateCounter(Request $request, Service $service)
     {
-        $days = array("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday");
-
         $validator = Validator::make(
             $request->all(),
             [
                 'counter' => ['numeric', 'min:0'],
-          
             ]
         );
-
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()->first()], 401);
         }
         $service->update($request->all());
-
         return response()->json($service, 200);
     }
 
+    //delete service
     public function delete(Service $service)
     {
         //delete related request to service
-        $req = Req::where("service_id", $service->id)->first();
-        if ($req)
+        foreach ($service->requests as $req) {
             $req->delete();
+        }
+        //delete related tickets to service
+        foreach ($service->tickets as $tic) {
+            //delete related notifications
+            foreach ($tic->notifications as $notif) {
+                $notif->delete();
+            }
+            $tic->delete();
+        }
         //delete related image to service 
         $path = storage_path() . "/" . "app/servicesImg/" . $service->image;
         if (File::exists($path)) {
@@ -276,5 +277,11 @@ class ServiceController extends Controller
         }
         $service->delete();
         return response()->json(null, 204);
+    }
+
+    //return image of service by name
+    public function downloadImage(String $imgName)
+    {
+        return response()->download(storage_path() . "/" . "app/servicesImg/" . $imgName);
     }
 }

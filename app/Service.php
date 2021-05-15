@@ -22,6 +22,11 @@ class Service extends Model
         return $this->hasMany(Ticket::class);
     }
 
+    public function requests()
+    {
+        return $this->hasMany(Request::class);
+    }
+
     public function users()
     {
         return $this->hasMany(User::class);
