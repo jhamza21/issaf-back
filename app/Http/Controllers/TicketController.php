@@ -286,9 +286,9 @@ class TicketController extends Controller
         for ($i = 0; $i < count($nextTickets); $i++) {
             foreach ($nextTickets[$i]->notifications as $notif) {
                 if ($nextTickets[$i]->number - $notif->number == $service->counter) {
-                    if ($nextTickets[$i]->name) $text = "Il reste " . $notif . " tickets avant le rendez-vous de " . $nextTickets[$i]->name;
+                    if ($nextTickets[$i]->name) $text = "Il reste " . $notif->number . " tickets avant le rendez-vous de " . $nextTickets[$i]->name;
                     else
-                        $text = "Il reste " . $notif . " tickets avant votre rendez-vous. Soyez prêt !";
+                        $text = "Il reste " . $notif->number . " tickets avant votre rendez-vous. Soyez prêt !";
                     $user = $nextTickets[$i]->user;
                     $this->sendNotif($user->messaging_token, $text, "E-SAFF : " . $service->title);
                 }
