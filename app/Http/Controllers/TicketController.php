@@ -134,7 +134,7 @@ class TicketController extends Controller
         }
         //check if ticket already taked
         $taked = Ticket::where('service_id', $request["service_id"])
-            ->whereDate('date', $request["date"])->whereTime('time', $request["time"])->first();
+            ->whereDate('date', $request["date"])->whereTime('time', $request["time"])->where('status', 'IN_PROGRESS')->first();
         if ($taked) return response()->json(['error' => "TICKET_ALREADY_TAKED"], 401);
 
         $request['status'] = 'IN_PROGRESS';
