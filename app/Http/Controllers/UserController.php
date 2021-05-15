@@ -24,7 +24,7 @@ class UserController extends Controller
             ->get();
         $filtred = [];
         foreach ($users as $user)
-            if ($connectedUser != $user->id) $filtred[] = $user;
+            if ($connectedUser->id != $user->id) $filtred[] = $user;
         return response()->json($filtred, 200);
     }
 
