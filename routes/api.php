@@ -77,7 +77,7 @@ Route::group(['middleware' => 'auth:api'], function () {
     //return tickets of connected user
     Route::get('tickets', 'TicketController@index');
     //validate ticket 
-    Route::put('validate/{ticketId}/{service}', 'TicketController@validateTicket');
+    Route::put('validate/{service}', 'TicketController@validateTicket');
     //return tickets reserved by operator
     Route::get('getTicketsByOperator/{service}', 'TicketController@ticketsByOperator');
     //return all tickets related to service

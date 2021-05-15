@@ -240,7 +240,7 @@ class TicketController extends Controller
 
 
     //validate ticket then increment service counter
-    public function validateTicket(Request $request, int $ticketId, Service $service)
+    public function validateTicket(Request $request, Service $service)
     {
 
         $validator = Validator::make(
@@ -254,8 +254,8 @@ class TicketController extends Controller
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()->first()], 401);
         }
-        $ticket = Ticket::where('id', $ticketId)->first();
         $date = Carbon::now()->format('Y-m-d');
+        $ticket = Ticket::where('service_id', $service->id)->where('number'->$service->number)->whereDate('date',$date)->first();
         if ($ticket) {
             //store duration and status of ticket
             $ticket->update([
