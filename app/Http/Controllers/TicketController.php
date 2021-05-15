@@ -272,14 +272,13 @@ class TicketController extends Controller
             $tick["user"] = User::where("id", $tick["user_id"])->first();
         }
 
-        //send notification to next user
-        $nextUser = Ticket::where('date', $date)->where('service_id', $service->id)->where('status', 'IN_PROGRESS')->where('number', $service->counter)->first();
-        if ($nextUser) {
-            $receiv = User::where('id', $nextUser->user_id)->first();
-
-            if ($nextUser->name) $text = "C'est le tour de " . $nextUser->name . " !";
+        //send notification to next ticket user
+        $nextTicket = Ticket::where('date', $date)->where('service_id', $service->id)->where('status', 'IN_PROGRESS')->where('number', $service->counter)->first();
+        if ($nextTicket) {
+            $receiver=$nextTicket->user;
+            if ($nextTicket->name) $text = "C'est le tour de " . $nextTicket->name . " !";
             else $text = "C'est votre tour !";
-            $this->sendNotif($receiv->messaging_token, $text, "E-SAFF : " . $service->title);
+            $this->sendNotif($receiver->messaging_token, $text, "E-SAFF : " . $service->title);
         }
         $nextTickets = Ticket::where('date', $date)->where('service_id', $service->id)->where('status', 'IN_PROGRESS')->get();
         //send planified notifications
@@ -289,8 +288,8 @@ class TicketController extends Controller
                     if ($nextTickets[$i]->name) $text = "Il reste " . $notif->number . " tickets avant le rendez-vous de " . $nextTickets[$i]->name;
                     else
                         $text = "Il reste " . $notif->number . " tickets avant votre rendez-vous. Soyez prêt !";
-                    $user = $nextTickets[$i]->user;
-                    $this->sendNotif($user->messaging_token, $text, "E-SAFF : " . $service->title);
+                    $receiver = $nextTickets[$i]->user;
+                    $this->sendNotif($receiver->messaging_token, $text, "E-SAFF : " . $service->title);
                 }
             }
         }
