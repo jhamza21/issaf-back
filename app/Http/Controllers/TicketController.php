@@ -33,18 +33,18 @@ class TicketController extends Controller
     public function ticketsByOperator(Service $service)
     {
         $user = Auth::user();
-        $tickets = Ticket::where('service_id', $service->id)->where('user_id',$user->id)->where('name', "!=", null)->get();
+        $tickets = Ticket::where('service_id', $service->id)->where('user_id', $user->id)->where('name', "!=", null)->get();
         foreach ($tickets as $ticket) {
             $ticket["notifications"] = $ticket->notifications;
             $ticket["service"] = $ticket->service;
         }
         return response()->json($tickets, 200);
     }
-    
+
     //return all tickets related to service
     public function getServiceTickets(Service $service)
     {
-            return response()->json($service->tickets, 200);
+        return response()->json($service->tickets, 200);
     }
 
     //return availabale times(tickets) in service acoording to given date
@@ -175,7 +175,7 @@ class TicketController extends Controller
         $user = Auth::user();
 
         //check if ticket already taked
-        if ($request["time"] != substr($ticket->time , 0,5)) {
+        if ($request["time"] != substr($ticket->time, 0, 5)) {
             $taked = Ticket::where('service_id', $request["service_id"])
                 ->whereDate('date', $request["date"])->whereTime('time', $request["time"])->first();
             if ($taked) return response()->json(['error' => "TICKET_ALREADY_TAKED"], 401);
@@ -276,14 +276,19 @@ class TicketController extends Controller
         $nextUser = Ticket::where('date', $date)->where('service_id', $service->id)->where('status', 'IN_PROGRESS')->where('number', $service->counter)->first();
         if ($nextUser) {
             $receiv = User::where('id', $nextUser->user_id)->first();
-            $this->sendNotif($receiv->messaging_token, "C'est votre tour !", "E-SAFF : " . $service->title);
+
+            if ($nextUser->name) $text = "C'est le tour de " . $nextUser->name . " !";
+            else $text = "C'est votre tour !";
+            $this->sendNotif($receiv->messaging_token, $text, "E-SAFF : " . $service->title);
         }
         $nextTickets = Ticket::where('date', $date)->where('service_id', $service->id)->where('status', 'IN_PROGRESS')->get();
         //send planified notifications
         for ($i = 0; $i < count($nextTickets); $i++) {
             foreach ($nextTickets[$i]->notifications as $notif) {
                 if ($nextTickets[$i]->number - $notif->number == $service->counter) {
-                    $text = "Il reste " . $notif . " tickets avant votre rendez-vous. Soyez prêt !";
+                    if ($nextTickets[$i]->name) $text = "Il reste " . $notif . " tickets avant le rendez-vous de " . $nextTickets[$i]->name;
+                    else
+                        $text = "Il reste " . $notif . " tickets avant votre rendez-vous. Soyez prêt !";
                     $user = $nextTickets[$i]->user;
                     $this->sendNotif($user->messaging_token, $text, "E-SAFF : " . $service->title);
                 }
