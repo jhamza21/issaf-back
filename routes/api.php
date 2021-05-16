@@ -7,10 +7,6 @@ use Illuminate\Support\Facades\Route;
 Route::post('register', 'Auth\RegisterController@register');
 //login user
 Route::post('login', 'Auth\LoginController@login');
-//check if user token is valid
-Route::post('tokenIsValid', function () {
-    return response()->json(auth('api')->user());
-});
 //logged out user
 Route::post('logout', 'Auth\LoginController@logout');
 //return provider image
@@ -30,6 +26,8 @@ Route::group(['middleware' => 'auth:api'], function () {
     Route::put('users', 'UserController@update');
     //delete an user
     Route::delete('users', 'UserController@delete');
+    //check if user token is valid
+    Route::post('tokenIsValid','UserController@tokenIsValid');
 
     //providers controller
     //get all providers

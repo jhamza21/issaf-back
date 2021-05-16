@@ -13,6 +13,17 @@ use Illuminate\Support\Facades\File;
 class UserController extends Controller
 {
 
+
+    //check if user token is valid
+    public function tokenIsValid()
+    {
+        $user = Auth::user();
+        if ($user)
+            return response()->json($user, 200);
+        else
+            return response()->json(null, 404);
+    }
+
     //get users suggestions based on given string
     //remove connected user from suggestions
     public function getSuggestions(String $text)
