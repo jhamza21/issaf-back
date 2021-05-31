@@ -79,7 +79,7 @@ Route::group(['middleware' => 'auth:api'], function () {
     //return tickets reserved by operator
     Route::get('getTicketsByOperator/{service}', 'TicketController@ticketsByOperator');
     //return all tickets related to service
-    Route::get('getTicketsByService/{service}', 'TicketController@getServiceTickets');
+    Route::get('getTicketsByService/{service}/{start}/{end}', 'TicketController@getServiceTickets');
     //return available tickets/times in service based on given date
     Route::get('tickets/{date}/{service}', 'TicketController@getAvailableTicketsByDate');
     //store a new ticket 

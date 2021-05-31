@@ -42,9 +42,13 @@ class TicketController extends Controller
     }
 
     //return all tickets related to service
-    public function getServiceTickets(Service $service)
+    public function getServiceTickets(Service $service, string $start, string $end)
     {
-        return response()->json($service->tickets, 200);
+        error_log("mmm");
+        $from = date($start);
+        $to = date($end);
+        $tickets = Ticket::where('service_id', $service->id)->whereBetween('date', [$from, $to])->get();
+        return response()->json($tickets, 200);
     }
 
     //return availabale times(tickets) in service acoording to given date
@@ -255,7 +259,7 @@ class TicketController extends Controller
             return response()->json(['error' => $validator->errors()->first()], 401);
         }
         $date = Carbon::now()->format('Y-m-d');
-        $ticket = Ticket::where('service_id', $service->id)->where('number',$service->counter)->whereDate('date',$date)->first();
+        $ticket = Ticket::where('service_id', $service->id)->where('number', $service->counter)->whereDate('date', $date)->first();
         if ($ticket) {
             //store duration and status of ticket
             $ticket->update([
@@ -275,7 +279,7 @@ class TicketController extends Controller
         //send notification to next ticket user
         $nextTicket = Ticket::where('date', $date)->where('service_id', $service->id)->where('status', 'IN_PROGRESS')->where('number', $service->counter)->first();
         if ($nextTicket) {
-            $receiver=$nextTicket->user;
+            $receiver = $nextTicket->user;
             if ($nextTicket->name) $text = "C'est le tour de " . $nextTicket->name . " !";
             else $text = "C'est votre tour !";
             $this->sendNotif($receiver->messaging_token, $text, "E-SAFF : " . $service->title);
