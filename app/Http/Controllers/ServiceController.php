@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Validator;
+use Exception;
+
 
 class ServiceController extends Controller
 {
@@ -72,6 +74,37 @@ class ServiceController extends Controller
             return response()->json("RESSOURCE_NOT_FOUND", 404);
     }
 
+    //send notification using firebase free service
+    //notification is sent based on token of user's device
+    private function sendNotif($receiverToken, $body, $title)
+    {
+        try {
+            $SERVER_API_KEY = "AAAAUXABvuk:APA91bGzKA4BLwPlLjbnWLKO13IcLQ5Qeem1ZYc2OUAlCD45HUhQpyv_lDX_zgc4-RklQtWAbKf8ltUOJ31Foon7bDYXc9UnF-4zOh52dU0U71QthCN8jEa0rlNA3CvoRVafeeK5_XQ3";
+            $data = [
+                "registration_ids" => [$receiverToken],
+                "notification" => [
+                    "title" => $title,
+                    "body" => $body,
+                    "sound" => "default"
+                ]
+            ];
+            $dataString = json_encode($data);
+            $headers = [
+                "Authorization: key=" . $SERVER_API_KEY,
+                "Content-Type: application/json"
+            ];
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, "https://fcm.googleapis.com/fcm/send");
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $dataString);
+            curl_exec($ch);
+        } catch (Exception $e) { }
+    }
+
+
     //store new service
     public function store(Request $request)
     {
@@ -122,6 +155,10 @@ class ServiceController extends Controller
 
                     ]
                 );
+
+                //send notif to user
+                $receiver = User::where("id", $userId)->first();
+                $this->sendNotif($receiver->messaging_token, $user->name . "(" . $user->username . ") vous a invité pour gérer la file d'attente du service: " . $service->title, "E-SAFF");
             }
         }
         return response()->json($service, 201);
@@ -213,6 +250,8 @@ class ServiceController extends Controller
 
                 ]
             );
+            $receiver = User::where("id", $userId)->first();
+                $this->sendNotif($receiver->messaging_token, $connectedUser->name . "(" . $connectedUser->username . ") vous a invité pour gérer la file d'attente du service: " . $service->title, "E-SAFF");
         }
         //DELETE REQUESTS AND SERVICE FROM REMOVED OPERATORS
         foreach ($undiff as $userId) {
